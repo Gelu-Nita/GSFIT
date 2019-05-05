@@ -1,0 +1,2 @@
+# GSFIT
+This is an IDL-widget(GUI)-based spectral fitting package that provides a user-friendly display of EOVSA image cubes and an interface to fast fitting codes (via platform-dependent shared-object libraries).  Fits to individual spectra can be done quickly for manual investigation, while parallel/multi-core batch processing of selected blocks of data can also be performed. A helper routine called ''gsfitview'' allows further display and investigation of the fitting results.
