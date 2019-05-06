@@ -1539,7 +1539,7 @@ pro gsfit,nthreads
   wRROI= WIDGET_BUTTON(wCursorBase, VALUE=gx_bitmap(filepath('rectangl.bmp', subdirectory=subdirectory)),$
     /bitmap,tooltip='Rectangular ROI Selection',uname='rroi')
   wPROI= WIDGET_BUTTON(wCursorBase, VALUE=gx_bitmap(filepath('segpoly.bmp', subdirectory=subdirectory)),$
-    /bitmap,tooltip='Free-hand ROI Selection',uname='froi')
+    /bitmap,tooltip='Polygonal ROI Selection',uname='froi')
   wFROI= WIDGET_BUTTON(wCursorBase, VALUE=gx_bitmap(filepath('roi.bmp', subdirectory=subdirectory)),$
     /bitmap,tooltip='Free-hand ROI Selection',uname='froi')
   wROISave= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('export.bmp', subdirectory=subdirectory)),$
