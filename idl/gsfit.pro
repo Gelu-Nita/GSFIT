@@ -1495,6 +1495,14 @@ pro gsfit_create_input_widgets,wInputBase,info,input_widgets=input_widgets
   input_widgets={wNInput:wNinput,wRInput:wRInput,wGuessParms:wGuessParms,wMinParms:wMinParms,wMaxParms:wMaxParms,wRMS:wRMS}
 end
 
+pro gsfit_list_slider_set_value,id,value
+ max_value=max(widget_info(id,/slider_min_max))
+ widget_control,widget_info(widget_info(id,/parent),find_by_uname='fitpixlabel'),set_value=value eq 0?'No fit solution computed for the selected pixel!':'Selected Fit Solution: '+strcompress(string(value,max_value,format="(i8,'/',i8)"),/rem)
+ widget_control,id,pro_set_value=''
+ widget_control,id,set_value=value
+ widget_control,id,pro_set_value='gsfit_list_slider_set_value'
+end
+
 pro gsfit,nthreads
   gsfitdir=file_dirname((ROUTINE_INFO('gsfit',/source)).path,/mark)
   cd,gsfitdir,curr=cdir
@@ -1572,7 +1580,8 @@ pro gsfit,nthreads
   left_panel=WIDGET_BASE(display_base,/column,UNAME='LEFTPANEL')
   right_panel=WIDGET_BASE(display_base,/column,UNAME='RIGHTPANEL')
   display_panel=WIDGET_BASE(display_base,/column,UNAME='DisplayPANEL')
-  wfitpix=WIDGET_SLIDER(display_panel,xsize=xsize,uvalue='Go To Fit',max=1,font=!defaults.font,uname='fitpix',sensitive=0)
+  wfitpixlabel=widget_label(display_panel,xsize=xsize,font=!defaults.font,uname='fitpixlabel',value='Fit Solution Selector')
+  wfitpix=WIDGET_SLIDER(display_panel,xsize=xsize,uvalue='Go To Fit',max=1,font=!defaults.font,uname='fitpix',sensitive=0,/suppress,pro_set_value='gsfit_list_slider_set_value')
     
     wTab=WIDGET_TAB(display_panel,/align_left,font=!defaults.font,uname='Tab')
     
