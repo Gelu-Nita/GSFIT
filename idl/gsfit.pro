@@ -218,7 +218,7 @@ end
 
 pro gsfit_fastcode_update,state,fastcode_update
 
-if keyword_set(fastcode_update) and tag_exist(state.header.info,'fastcode') then begin
+if keyword_set(fastcode_update) and tag_exist(state.header.info,'fastcode') and ptr_valid(state.pmaps) then begin
   Npix=1l
   Nvox=1l
   Nfreq=state.header.info.fastcode.pixdim[0]
@@ -1444,23 +1444,9 @@ pro gsfit_event,event
                      exit_bridges:
                    end                                           
    state.wHelp: begin
-    
-    message=['1.  Use the Open menu button to upload any EOVSA map cube prepared for fitting',$
-             '2.  Use the Frequency and Time scroll bars to select and visualize an EOVSA map in the left panel',$
-             '3.  Click the mouse on any map pixel to see the corresponding spectrum and fit error bars in the right panel',$
-             '4.  Use the X-Y scroll bars to move the location of the pointer pixel by pixel in any direction.',$
-             '5.  Use the "Fit Selected Pixel" menu button to fit the currently selected pixel.',$
-             '    When the single pixel fit is done, the result is displayed in the right panel and the upright scrollbar maximum value is incremented by 1.',$
-             '    Do as many single pixel fits you want for any [x,y] cursor position or time scrollbar selection.',$
-             '6.  Use the upright scrollbar to navigate through the fits already performed. The x, y and t scrollbars and cursor position will automatically move the corresponding positions and the fit results will be displayed. Alternatively, you can click or use scrollbars to navigate the data space. If an already fitted pixel is hit, the fit results will be displayed. If no fit exists for a given pixel at a given time, the upright fit scroll bar should move to the [0] index.',$
-             '7.  Use the "Fit Range" button to fit more than one pixel starting with the current cursor position  and selected timeframe. A dialog will pop-up asking you how many pixels in the positive x and y directions and how many time frames in the positive time directions should be fitted. This may look as a limitation that could be addressed in a future version. However, it gives you a convenient tool to fit a restricted region or to follow its time evolution faster than fitting the entire map would allow.',$
-             '    When the fits are done, they are recorded in memory as a one dimensional list of individual pixel fits, so the fit scrollbar may be used to inspect the results in the same manner.',$
-             '8.  Use the "Save  Fit List" menu button to save the current list in an IDL sav file. If only a few pixels ae fitted, the file size is expected to be much smaller than a file containg a "traditional" fit map structure. Otherwise, some overhead is expected, since the fit list records individual x,y,t indexes for each fitted pixel.',$
-             '9.  Launch gsfitview.pro to import and visualize  the fit results in a map form. Of course, if only a few pixels were fit, the maps will be mainly empty.',$
-             '10. You may start a fresh session  of gsfit.pro to upload an EOVSA mapcube and use the "Restore Fit List" button to restore a previously saved fit list to which you may continue to add more fits performed in the new session.']
-
-                answ=dialog_message(message,/info)
-                end                                                 
+                 help='http://www.ovsa.njit.edu/wiki/index.php/GSFIT_GUI_Organization_and_Functionality'
+                 if !version.os_family eq 'Windows' then spawn,'start /max '+help else answ=dialog_message(' For help, please open ' +help+' in your preffred browser.')    
+                end                                      
    else:
   endcase
   gsfit_fastcode_update,state,fastcode_update
