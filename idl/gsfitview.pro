@@ -846,10 +846,9 @@ pro gsfitview,maps
   endelse
   if scr[0] lt 3200 then nb=16 else nb=32
   subdirectory=['resource', 'bitmaps']
-  xsize=0.7*scr[1]/2
-  ;ysize=0.93*scr[1]
+  xsize=0.69*scr[1]/2
   main_base= WIDGET_BASE(Title ='GSFITVIEW',/column,UNAME='MAINBASE',/TLB_KILL_REQUEST_EVENTS,TLB_FRAME_ATTR=0,$
-  x_scroll_size=0.67*scr[0],y_scroll_size=scr[1]*0.90,/scroll)
+  x_scroll_size=0.67*scr[0],y_scroll_size=scr[1]*0.9,/scroll)
   state_base=widget_base(main_base, /column,UNAME='STATEBASE')
   wToolbarBase=widget_base(state_base, /row,/frame,UNAME='TOOLBAR',/toolbar)
   wOpen= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('open.bmp', subdirectory=subdirectory)),$
@@ -887,98 +886,191 @@ pro gsfitview,maps
 
       
   wHelp= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('help.bmp', subdirectory=subdirectory)),$
-    /bitmap,tooltip='Help')   
-  display_base=WIDGET_BASE(state_base,/row,UNAME='DISPLAYBASE')
-  left_panel=WIDGET_BASE(display_base,/column,UNAME='LEFTPANEL')
-  right_panel=WIDGET_BASE(display_base,/column,UNAME='RIGHTPANEL')
-  display_panel=WIDGET_BASE(display_base,/column,UNAME='DisplayPANEL')
-
+    /bitmap,tooltip='Help')  
+;=======================================================================================================================      
+  row1_base=widget_base(state_base,/row)
+;=======================================================================================================================    
+  wfreqlabel=widget_label(row1_base,xsize=xsize,value='Frequency',font=!defaults.font,/align_center,uname='freqlabel')
+  wtimelabel=widget_label(row1_base,xsize=xsize,value='Time',font=!defaults.font,/align_center,uname='timelabel')
+  hist_scale=1.25
+  wHistLabel=widget_label(row1_base,xsize=xsize*hist_scale,value='Histogram Settings',font=!defaults.font,/align_center);,scr_ysize=1.3*g.scr_ysize)
+;=======================================================================================================================    
+  row2_base=widget_base(state_base,/row)
+;=======================================================================================================================    
+  wfreq=WIDGET_SLIDER(row2_base,xsize=xsize,max=maxfreq,uvalue='FREQ',font=!defaults.font,/suppress,uname='frequency')
+  wtime=WIDGET_SLIDER(row2_base,xsize=xsize,uvalue='TIME',max=maxtime,font=!defaults.font,/suppress,uname='time')
+ 
+;=======================================================================================================================    
+  row3_base=widget_base(state_base,/row)
+;=======================================================================================================================    
+  wmaplist=WIDGET_DROPLIST(row3_base,xsize=xsize,value=['Data Maps'],uvalue='Map',font=!defaults.font)
+  wparmlist=WIDGET_DROPLIST(row3_base,xsize=xsize,value=['Parameter Maps'],uname='Parm',font=!defaults.font)
   
-  wfreqlabel=widget_label(left_panel,xsize=xsize,value='Frequency',font=!defaults.font,/align_center,uname='freqlabel')
-  wfreq=WIDGET_SLIDER(left_panel,xsize=xsize,max=maxfreq,uvalue='FREQ',font=!defaults.font,/suppress,uname='frequency')
-  label=WIDGET_LABEL(left_panel,xsize=xsize,font=!defaults.font,value='')
-  wmaplist=WIDGET_DROPLIST(left_panel,xsize=xsize,value=['Data Maps'],uvalue='Map',font=!defaults.font)
+;  hbase=widget_base(row3_base,xsize=xsize*hist_scale,/row,/frame)
+;  wHistRange=cw_objarray(hbase,/static,value=[0,0],font=!defaults.font,xtextsize=10,names=['Min','Max'])
+;  wHistBins=cw_objarray(hbase,value=100,xtextsize=5,names='nbins',inc=10,/static)
   
-  wtimelabel=widget_label(right_panel,xsize=xsize,value='Time',font=!defaults.font,/align_center,uname='timelabel')
-  wtime=WIDGET_SLIDER(right_panel,xsize=xsize,uvalue='TIME',max=maxtime,font=!defaults.font,/suppress,uname='time')
-  label=WIDGET_LABEL(right_panel,xsize=xsize,font=!defaults.font,value='')
-  wparmlist=WIDGET_DROPLIST(right_panel,xsize=xsize,value=['Parameter Maps'],uname='Parm',font=!defaults.font)
-
-  
-  tmpbase=widget_base(left_panel,/row,/frame)
+;=======================================================================================================================  
+  row4_base=widget_base(state_base,/row)
+;=======================================================================================================================   
+  tmpbase=widget_base(row4_base,xsize=xsize,/row,/frame)
   wMapRefBase1=widget_base(tmpbase)
   wMapRefBase2=widget_base(tmpbase)
   wShowRef=cw_bgroup(wMapRefBase2,'Show',/nonexclusive,set_value=0,font=!defaults.font)
   g=widget_info(wShowRef,/geometry)
-  wMapRef=WIDGET_DROPLIST(wMapRefBase1,xsize=xsize-g.scr_xsize,value=['Reference: Data', 'Reference: Parameter'],uvalue='MapRef',font=!defaults.font)  
-  
-  
-  wRefOptionBase=widget_base(right_panel,/row,/frame)
-  wRefOrder=cw_bgroup(wRefOptionBase,['Back','Countour'],/row,/exclusive,SET_VALUE=1,font=!defaults.font)  
+  wMapRef=WIDGET_DROPLIST(wMapRefBase1,xsize=xsize-g.scr_xsize,value=['Reference: Data', 'Reference: Parameter'],uvalue='MapRef',font=!defaults.font)
+
+
+  wRefOptionBase=widget_base(row4_base,xsize=xsize,/row,/frame)
+  wRefOrder=cw_bgroup(wRefOptionBase,['Back','Countour'],/row,/exclusive,SET_VALUE=1,font=!defaults.font)
   wRefLevel=cw_objfield(wRefOptionBase,label='Level ',value=10,units='%',inc=10l,type=1l,min=0,max=100,xtextsize=4)
-  
-  wdatamap=WIDGET_DRAW(left_panel,xsize=xsize,ysize=xsize,UNAME='DATAMAP',$
-                          /button_events, $
-                          /motion_events, $
-                          retain=1, $
-                          ;/expose_events, $
-                          graphics_level=1 $
-                          )
-  wxybase=widget_base(left_panel,/row,/frame)
+  wHistCheck=cw_bgroup(widget_base(row4_base,xsize=xsize*hist_scale,/row,/frame),['OutROI','LogBins', 'LogHist','Over2D','1D'],SET_VALUE=0,/nonexclusive,/row,font=!defaults.font)
+
+  row5_base=widget_base(state_base,/row)
+  wdatamap=WIDGET_DRAW( row5_base,xsize=xsize,ysize=xsize,UNAME='DATAMAP',$
+    /button_events, $
+    /motion_events, $
+    retain=1, $
+    graphics_level=1 $
+    )  
+  wparmap=WIDGET_DRAW(row5_base,xsize=xsize,ysize=xsize,UNAME='PARMAP',$
+    /button_events, $
+    /motion_events, $
+    retain=1, $
+    ;/expose_events, $
+    graphics_level=1 $
+    )    
+    
+  wHistPlot=WIDGET_DRAW(row5_base,xsize=xsize*hist_scale,ysize=xsize,UNAME='HISTPLOT',graphics_level=1)    
+;=======================================================================================================================  
+  row6_base=widget_base(state_base,/row)
+;=======================================================================================================================    
+  wxybase=widget_base(row6_base,xsize=xsize,/row)
   wxbase=widget_base(wxybase,xsize=xsize/2)
   wx=cw_objfield(wxbase,label='Cursor X: ',xtextsize=3,max=xsize-1,min=0,inc=1,font=!defaults.font,uname='cursor_x',sensitive=0)
   wxlabel=widget_info(wx,find_by_uname='_label')
   wybase=widget_base(wxybase,xsize=xsize/2)
   wy=cw_objfield(wybase,label='Cursor Y: ',xtextsize=3,max=xsize-1,min=0,inc=1,font=!defaults.font,uname='cursor_y',sensitive=0)
-  wylabel=widget_info(wy,find_by_uname='_label')                     
+  wylabel=widget_info(wy,find_by_uname='_label')
+  wparref=CW_ObjArray(widget_base(row6_base,xsize=xsize),value=[0,0],font=!defaults.font,/static,names=['Refmaps shift_X:','Refmaps shift_Y:'],unit='"',inc=2,ysize=40)  
 
-  wspectrum=WIDGET_DRAW(left_panel,xsize=xsize,ysize=xsize,UNAME='SPECTRUM',$
-                          retain=1, $
-                          ;/expose_events, $
-                          graphics_level=1 $
-                          )
-  
-  wparmap=WIDGET_DRAW(right_panel,xsize=xsize,ysize=xsize,UNAME='PARMAP',$
-                          /button_events, $
-                          /motion_events, $
-                          retain=1, $
-                          ;/expose_events, $
-                          graphics_level=1 $
-                          )
-                                          
-                          
-  g=widget_info( wmapref,/geometry)
-  
-
-  wparref=CW_ObjArray(right_panel,value=[0,0],font=!defaults.font,/static,names=['Refmaps shift_X:','Refmaps shift_Y:'],unit='"',inc=2,ysize=40)  
-                           
-  wtimeplot=WIDGET_DRAW(right_panel,xsize=xsize,ysize=xsize,UNAME='TIMEPLOT',$
-                          retain=1, $
-                          ;/expose_events, $
-                          graphics_level=1 $
-                          )     
-  
-  
-  g=widget_info(wparref,/geometry)
-  wDummy=widget_label( display_panel,value='',scr_ysize=2*g.scr_ysize/3)
-  wLabel=widget_label( display_panel,value='Histogram Settings',font=!defaults.font);,scr_ysize=1.3*g.scr_ysize)
-  hbase=widget_base(display_panel,/row,/frame)
+  hbase=widget_base(row6_base,xsize=xsize*hist_scale,/row)
   wHistRange=cw_objarray(hbase,/static,value=[0,0],font=!defaults.font,xtextsize=10,names=['Min','Max'])
   wHistBins=cw_objarray(hbase,value=100,xtextsize=5,names='nbins',inc=10,/static)
-  wHistCheck=cw_bgroup(widget_base(display_panel,/row,/frame),['OutROI','LogBins', 'LogHist','Over2D','1D'],SET_VALUE=0,/nonexclusive,/row,font=!defaults.font)  
-  g1=widget_info(display_panel,/geometry)
+;=======================================================================================================================
+  row7_base=widget_base(state_base,/row)
+;=======================================================================================================================      
+  wspectrum=WIDGET_DRAW(row7_base,xsize=xsize,ysize=xsize,UNAME='SPECTRUM',$
+    retain=1, $
+    graphics_level=1 $
+    ) 
+  wtimeplot=WIDGET_DRAW(row7_base,xsize=xsize,ysize=xsize,UNAME='TIMEPLOT',$
+    retain=1, $
+    ;/expose_events, $
+    graphics_level=1 $
+    ) 
   
-  wHistPlot=WIDGET_DRAW(display_panel,xsize=g1.scr_xsize,ysize=xsize,UNAME='HISTPLOT',graphics_level=1)  
-
-  wDummy=widget_label( display_panel,value='',scr_ysize=3*g.scr_ysize/3)
-  
-  
-  winfobase=widget_base(display_panel,/row)
+  winfobase=widget_base(row7_base,/row,/frame)
   wTimeProfileOptions=cw_objPlotOptions(winfobase,uname='Time Profile Plot Options')
-  
   g2=widget_info(wTimeProfileOptions,/geometry)
-  wInfo=widget_text(winfobase,scr_xsize=g1.scr_xsize-g2.scr_xsize,scr_ysize=xsize,/align_left,uname='info',/scroll)                    
+  wInfo=widget_text(winfobase,scr_xsize=xsize*hist_scale-g2.scr_xsize,scr_ysize=xsize,/align_left,uname='info',/scroll)
+
+
   
+;  display_base=WIDGET_BASE(state_base,/row,UNAME='DISPLAYBASE')
+;  left_panel=WIDGET_BASE(display_base,/column,UNAME='LEFTPANEL')
+;  right_panel=WIDGET_BASE(display_base,/column,UNAME='RIGHTPANEL')
+;  display_panel=WIDGET_BASE(display_base,/column,UNAME='DisplayPANEL')
+
+  
+  ;wfreqlabel=widget_label(left_panel,xsize=xsize,value='Frequency',font=!defaults.font,/align_center,uname='freqlabel')
+  ;wfreq=WIDGET_SLIDER(left_panel,xsize=xsize,max=maxfreq,uvalue='FREQ',font=!defaults.font,/suppress,uname='frequency')
+  ;label=WIDGET_LABEL(left_panel,xsize=xsize,font=!defaults.font,value='')
+  ;wmaplist=WIDGET_DROPLIST(left_panel,xsize=xsize,value=['Data Maps'],uvalue='Map',font=!defaults.font)
+  
+  ;wtimelabel=widget_label(right_panel,xsize=xsize,value='Time',font=!defaults.font,/align_center,uname='timelabel')
+  ;wtime=WIDGET_SLIDER(right_panel,xsize=xsize,uvalue='TIME',max=maxtime,font=!defaults.font,/suppress,uname='time')
+  ;label=WIDGET_LABEL(right_panel,xsize=xsize,font=!defaults.font,value='')
+  ;wparmlist=WIDGET_DROPLIST(right_panel,xsize=xsize,value=['Parameter Maps'],uname='Parm',font=!defaults.font)
+
+  
+;  tmpbase=widget_base(left_panel,/row,/frame)
+;  wMapRefBase1=widget_base(tmpbase)
+;  wMapRefBase2=widget_base(tmpbase)
+;  wShowRef=cw_bgroup(wMapRefBase2,'Show',/nonexclusive,set_value=0,font=!defaults.font)
+;  g=widget_info(wShowRef,/geometry)
+;  wMapRef=WIDGET_DROPLIST(wMapRefBase1,xsize=xsize-g.scr_xsize,value=['Reference: Data', 'Reference: Parameter'],uvalue='MapRef',font=!defaults.font)  
+;  
+;  
+;  wRefOptionBase=widget_base(right_panel,/row,/frame)
+;  wRefOrder=cw_bgroup(wRefOptionBase,['Back','Countour'],/row,/exclusive,SET_VALUE=1,font=!defaults.font)  
+;  wRefLevel=cw_objfield(wRefOptionBase,label='Level ',value=10,units='%',inc=10l,type=1l,min=0,max=100,xtextsize=4)
+  
+  
+  
+;  wdatamap=WIDGET_DRAW(left_panel,xsize=xsize,ysize=xsize,UNAME='DATAMAP',$
+;                          /button_events, $
+;                          /motion_events, $
+;                          retain=1, $
+;                          graphics_level=1 $
+;                          )
+;  wxybase=widget_base(left_panel,/row,/frame)
+;  wxbase=widget_base(wxybase,xsize=xsize/2)
+;  wx=cw_objfield(wxbase,label='Cursor X: ',xtextsize=3,max=xsize-1,min=0,inc=1,font=!defaults.font,uname='cursor_x',sensitive=0)
+;  wxlabel=widget_info(wx,find_by_uname='_label')
+;  wybase=widget_base(wxybase,xsize=xsize/2)
+;  wy=cw_objfield(wybase,label='Cursor Y: ',xtextsize=3,max=xsize-1,min=0,inc=1,font=!defaults.font,uname='cursor_y',sensitive=0)
+;  wylabel=widget_info(wy,find_by_uname='_label')                     
+
+;  wspectrum=WIDGET_DRAW(left_panel,xsize=xsize,ysize=xsize,UNAME='SPECTRUM',$
+;                          retain=1, $
+;                          ;/expose_events, $
+;                          graphics_level=1 $
+;                          )
+  
+;  wparmap=WIDGET_DRAW(right_panel,xsize=xsize,ysize=xsize,UNAME='PARMAP',$
+;                          /button_events, $
+;                          /motion_events, $
+;                          retain=1, $
+;                          ;/expose_events, $
+;                          graphics_level=1 $
+;                          )
+                                          
+                          
+;  g=widget_info( wmapref,/geometry)
+;  
+
+;  wparref=CW_ObjArray(right_panel,value=[0,0],font=!defaults.font,/static,names=['Refmaps shift_X:','Refmaps shift_Y:'],unit='"',inc=2,ysize=40)  
+                           
+;  wtimeplot=WIDGET_DRAW(right_panel,xsize=xsize,ysize=xsize,UNAME='TIMEPLOT',$
+;                          retain=1, $
+;                          ;/expose_events, $
+;                          graphics_level=1 $
+;                          )     
+  
+  
+;  g=widget_info(wparref,/geometry)
+;  wDummy=widget_label( display_panel,value='',scr_ysize=2*g.scr_ysize/3)
+  ;wLabel=widget_label( display_panel,value='Histogram Settings',font=!defaults.font);,scr_ysize=1.3*g.scr_ysize)
+  ;hbase=widget_base(display_panel,/row,/frame)
+;  wHistRange=cw_objarray(hbase,/static,value=[0,0],font=!defaults.font,xtextsize=10,names=['Min','Max'])
+;  wHistBins=cw_objarray(hbase,value=100,xtextsize=5,names='nbins',inc=10,/static)
+;  wHistCheck=cw_bgroup(widget_base(display_panel,/row,/frame),['OutROI','LogBins', 'LogHist','Over2D','1D'],SET_VALUE=0,/nonexclusive,/row,font=!defaults.font)  
+;  g1=widget_info(display_panel,/geometry)
+  ;wHistPlot=WIDGET_DRAW(display_panel,xsize=g1.scr_xsize,ysize=xsize,UNAME='HISTPLOT',graphics_level=1)  
+  
+;   wHistPlot=WIDGET_DRAW(display_panel,xsize=xsize*hist_scale,ysize=xsize,UNAME='HISTPLOT',graphics_level=1) 
+
+  ;wDummy=widget_label( display_panel,value='',scr_ysize=3*g.scr_ysize/3)
+  
+  
+;  winfobase=widget_base(display_panel,/row)
+;  wTimeProfileOptions=cw_objPlotOptions(winfobase,uname='Time Profile Plot Options')
+;  
+;  g2=widget_info(wTimeProfileOptions,/geometry)
+;  ;wInfo=widget_text(winfobase,scr_xsize=g1.scr_xsize-g2.scr_xsize,scr_ysize=xsize,/align_left,uname='info',/scroll)     
+;  wInfo=widget_text(winfobase,scr_xsize=xsize*hist_scale-g2.scr_xsize,scr_ysize=xsize,/align_left,uname='info',/scroll)                 
+;  
   if !version.os_family eq 'Windows' then set_plot,'win' else set_plot,'x'                      
   window,/free,/pixmap,xsiz=xsize,ysiz=xsize
   erase,0
