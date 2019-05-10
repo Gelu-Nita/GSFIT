@@ -236,6 +236,7 @@ pro gsfitview_event,event
                     draw=1
                    end 
    state.wTimeProfileOptions:draw=1
+   state.wSpectralPlotOptions:draw=1
    state.wpalette: begin
                      xloadct,/silent,/block
                      draw=1
@@ -722,20 +723,36 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
     err_spectrum=(((*state.pmaps).errmaps)[*,time_idx]).data
     sz=size(data_spectrum)
     if i lt sz[1] and j lt sz[2] then begin
+      if n_elements(range) gt 0 then dummy=temporary(range)
+      if n_elements(pxrange) gt 0 then dummy=temporary(pxrange)
+      if n_elements(pyrange) gt 0 then dummy=temporary(pyrange)
+      if n_elements(xlog) gt 0 then dummy=temporary(xlog)
+      if n_elements(ylog) gt 0 then dummy=temporary(ylog)
+      widget_control,state.wSpectralPlotOptions,get_value=objSpectralPlotOptions
+      objSpectralPlotOptions->GetProperty,range=range,xrange=pxrange,yrange=pyrange,xlog=xlog,ylog=ylog,/xsty,/ysty
       good=where(data_spectrum[i,j,*] gt 0)>0
-      yrange=minmax(data_spectrum[i,j,good]);yrange=[min(data_spectrum[i,j,good]-err_spectrum[i,j,good]*2),max([data_spectrum[i,j,good]+err_spectrum[i,j,good]*2,fit_spectrum[i,j,good]])]>(min(data_spectrum[i,j,good])/2)
-      plot,freq,data_spectrum[i,j,*],/xlog,/ylog,/xsty,/ysty,psym=2,xrange=[1,20],yrange=yrange,$
-        xtitle='Frequency (GHz)',ytitle='Flux density [sfu/pixel]',title='Spectral Fit',ymargin=[6,6]
+      if range eq 'Auto' then begin
+        pyrange=minmax(data_spectrum[i,j,good])
+        pxrange=[1,20]
+      end
+      plot,freq,data_spectrum[i,j,*],xlog=xlog,ylog=ylog,xrange=pxrange,yrange=pyrange,psym=2,$
+        xtitle='Frequency (GHz)',ytitle='Flux density [sfu/pixel]',title='Spectral Fit',ymargin=[6,6],/xsty,/ysty
       oploterr, freq, data_spectrum[i,j,*], err_spectrum[i,j,*]*2, psym=3;, hatlength=2, errcolor=255 
       oplot,freq,fit_spectrum[i,j,*],color=150,thick=3
       oplot,freq[[freq_idx,freq_idx]],10^!y.crange,linesty=2,color=250
+      if range eq 'Auto' then objSpectralPlotOptions->SetProperty,xrange=keyword_set(xlog)?10^!x.crange:!x.crange, yrange=keyword_set(ylog)?10^!y.crange:!y.crange
     endif else erase,0
   
      wset,wtimeplot
      if i lt sz[1] and j lt sz[2] then begin
-      
-      widget_control,state.wTimeProfileOptions,get_value=objPlotOptions
-      objPlotOptions->GetProperty,range=range,xrange=pxrange,yrange=pyrange,xlog=xlog,ylog=ylog
+      if n_elements(range) gt 0 then dummy=temporary(range)
+      if n_elements(pxrange) gt 0 then dummy=temporary(pxrange)
+      if n_elements(pyrange) gt 0 then dummy=temporary(pyrange)
+      if n_elements(xlog) gt 0 then dummy=temporary(xlog)
+      if n_elements(ylog) gt 0 then dummy=temporary(ylog)
+      if n_elements(pyrange) gt 0 then dummy=temporary(pyrange)
+      widget_control,state.wTimeProfileOptions,get_value=objTimePlotOptions
+      objTimePlotOptions->GetProperty,range=range,xrange=pxrange,yrange=pyrange,xlog=xlog,ylog=ylog
   
       lightcurve=((*state.pmaps).(parm_index)).data
       if errparm_index[0] gt 0 then errlightcurve=((*state.pmaps).(errparm_index)).data
@@ -763,7 +780,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
       endif
       outplot,time[[time_idx,time_idx]],!y.crange,linesty=2,color=250
       
-      if range eq 'Auto' then objPlotOptions->SetProperty,xrange=keyword_set(xlog)?10^!x.crange:!x.crange, yrange=keyword_set(ylog)?10^!y.crange:!y.crange
+      if range eq 'Auto' then objTimePlotOptions->SetProperty,xrange=keyword_set(xlog)?10^!x.crange:!x.crange, yrange=keyword_set(ylog)?10^!y.crange:!y.crange
   
   
     endif else erase,0 
@@ -971,106 +988,13 @@ pro gsfitview,maps
     ) 
   
   winfobase=widget_base(row7_base,/row,/frame)
-  wTimeProfileOptions=cw_objPlotOptions(winfobase,uname='Time Profile Plot Options')
+  plot_options_base=widget_base(winfobase,/column)
+  wSpectralPlotOptions=cw_objPlotOptions(plot_options_base,uname='Spectral Plot Options',/xlog,/ylog)
+  widget_control,wSpectralPlotOptions,get_value=objSpectralPlotOptions
+  wTimeProfileOptions=cw_objPlotOptions(plot_options_base,uname='Time Profile Plot Options')
   g2=widget_info(wTimeProfileOptions,/geometry)
   wInfo=widget_text(winfobase,scr_xsize=xsize*hist_scale-g2.scr_xsize,scr_ysize=xsize,/align_left,uname='info',/scroll)
 
-
-  
-;  display_base=WIDGET_BASE(state_base,/row,UNAME='DISPLAYBASE')
-;  left_panel=WIDGET_BASE(display_base,/column,UNAME='LEFTPANEL')
-;  right_panel=WIDGET_BASE(display_base,/column,UNAME='RIGHTPANEL')
-;  display_panel=WIDGET_BASE(display_base,/column,UNAME='DisplayPANEL')
-
-  
-  ;wfreqlabel=widget_label(left_panel,xsize=xsize,value='Frequency',font=!defaults.font,/align_center,uname='freqlabel')
-  ;wfreq=WIDGET_SLIDER(left_panel,xsize=xsize,max=maxfreq,uvalue='FREQ',font=!defaults.font,/suppress,uname='frequency')
-  ;label=WIDGET_LABEL(left_panel,xsize=xsize,font=!defaults.font,value='')
-  ;wmaplist=WIDGET_DROPLIST(left_panel,xsize=xsize,value=['Data Maps'],uvalue='Map',font=!defaults.font)
-  
-  ;wtimelabel=widget_label(right_panel,xsize=xsize,value='Time',font=!defaults.font,/align_center,uname='timelabel')
-  ;wtime=WIDGET_SLIDER(right_panel,xsize=xsize,uvalue='TIME',max=maxtime,font=!defaults.font,/suppress,uname='time')
-  ;label=WIDGET_LABEL(right_panel,xsize=xsize,font=!defaults.font,value='')
-  ;wparmlist=WIDGET_DROPLIST(right_panel,xsize=xsize,value=['Parameter Maps'],uname='Parm',font=!defaults.font)
-
-  
-;  tmpbase=widget_base(left_panel,/row,/frame)
-;  wMapRefBase1=widget_base(tmpbase)
-;  wMapRefBase2=widget_base(tmpbase)
-;  wShowRef=cw_bgroup(wMapRefBase2,'Show',/nonexclusive,set_value=0,font=!defaults.font)
-;  g=widget_info(wShowRef,/geometry)
-;  wMapRef=WIDGET_DROPLIST(wMapRefBase1,xsize=xsize-g.scr_xsize,value=['Reference: Data', 'Reference: Parameter'],uvalue='MapRef',font=!defaults.font)  
-;  
-;  
-;  wRefOptionBase=widget_base(right_panel,/row,/frame)
-;  wRefOrder=cw_bgroup(wRefOptionBase,['Back','Countour'],/row,/exclusive,SET_VALUE=1,font=!defaults.font)  
-;  wRefLevel=cw_objfield(wRefOptionBase,label='Level ',value=10,units='%',inc=10l,type=1l,min=0,max=100,xtextsize=4)
-  
-  
-  
-;  wdatamap=WIDGET_DRAW(left_panel,xsize=xsize,ysize=xsize,UNAME='DATAMAP',$
-;                          /button_events, $
-;                          /motion_events, $
-;                          retain=1, $
-;                          graphics_level=1 $
-;                          )
-;  wxybase=widget_base(left_panel,/row,/frame)
-;  wxbase=widget_base(wxybase,xsize=xsize/2)
-;  wx=cw_objfield(wxbase,label='Cursor X: ',xtextsize=3,max=xsize-1,min=0,inc=1,font=!defaults.font,uname='cursor_x',sensitive=0)
-;  wxlabel=widget_info(wx,find_by_uname='_label')
-;  wybase=widget_base(wxybase,xsize=xsize/2)
-;  wy=cw_objfield(wybase,label='Cursor Y: ',xtextsize=3,max=xsize-1,min=0,inc=1,font=!defaults.font,uname='cursor_y',sensitive=0)
-;  wylabel=widget_info(wy,find_by_uname='_label')                     
-
-;  wspectrum=WIDGET_DRAW(left_panel,xsize=xsize,ysize=xsize,UNAME='SPECTRUM',$
-;                          retain=1, $
-;                          ;/expose_events, $
-;                          graphics_level=1 $
-;                          )
-  
-;  wparmap=WIDGET_DRAW(right_panel,xsize=xsize,ysize=xsize,UNAME='PARMAP',$
-;                          /button_events, $
-;                          /motion_events, $
-;                          retain=1, $
-;                          ;/expose_events, $
-;                          graphics_level=1 $
-;                          )
-                                          
-                          
-;  g=widget_info( wmapref,/geometry)
-;  
-
-;  wparref=CW_ObjArray(right_panel,value=[0,0],font=!defaults.font,/static,names=['Refmaps shift_X:','Refmaps shift_Y:'],unit='"',inc=2,ysize=40)  
-                           
-;  wtimeplot=WIDGET_DRAW(right_panel,xsize=xsize,ysize=xsize,UNAME='TIMEPLOT',$
-;                          retain=1, $
-;                          ;/expose_events, $
-;                          graphics_level=1 $
-;                          )     
-  
-  
-;  g=widget_info(wparref,/geometry)
-;  wDummy=widget_label( display_panel,value='',scr_ysize=2*g.scr_ysize/3)
-  ;wLabel=widget_label( display_panel,value='Histogram Settings',font=!defaults.font);,scr_ysize=1.3*g.scr_ysize)
-  ;hbase=widget_base(display_panel,/row,/frame)
-;  wHistRange=cw_objarray(hbase,/static,value=[0,0],font=!defaults.font,xtextsize=10,names=['Min','Max'])
-;  wHistBins=cw_objarray(hbase,value=100,xtextsize=5,names='nbins',inc=10,/static)
-;  wHistCheck=cw_bgroup(widget_base(display_panel,/row,/frame),['OutROI','LogBins', 'LogHist','Over2D','1D'],SET_VALUE=0,/nonexclusive,/row,font=!defaults.font)  
-;  g1=widget_info(display_panel,/geometry)
-  ;wHistPlot=WIDGET_DRAW(display_panel,xsize=g1.scr_xsize,ysize=xsize,UNAME='HISTPLOT',graphics_level=1)  
-  
-;   wHistPlot=WIDGET_DRAW(display_panel,xsize=xsize*hist_scale,ysize=xsize,UNAME='HISTPLOT',graphics_level=1) 
-
-  ;wDummy=widget_label( display_panel,value='',scr_ysize=3*g.scr_ysize/3)
-  
-  
-;  winfobase=widget_base(display_panel,/row)
-;  wTimeProfileOptions=cw_objPlotOptions(winfobase,uname='Time Profile Plot Options')
-;  
-;  g2=widget_info(wTimeProfileOptions,/geometry)
-;  ;wInfo=widget_text(winfobase,scr_xsize=g1.scr_xsize-g2.scr_xsize,scr_ysize=xsize,/align_left,uname='info',/scroll)     
-;  wInfo=widget_text(winfobase,scr_xsize=xsize*hist_scale-g2.scr_xsize,scr_ysize=xsize,/align_left,uname='info',/scroll)                 
-;  
   if !version.os_family eq 'Windows' then set_plot,'win' else set_plot,'x'                      
   window,/free,/pixmap,xsiz=xsize,ysiz=xsize
   erase,0
@@ -1122,6 +1046,7 @@ pro gsfitview,maps
     rroi_on:0, $
     proi_on:0, $
     wTimeProfileOptions:wTimeProfileOptions,$
+    wSpectralPlotOptions:wSpectralPlotOptions,$
     wRefmapOptions:{Show:wShowRef, Order:wRefOrder, level:wRefLevel},$
     wRefROI: wRefROI $
     }

@@ -124,7 +124,7 @@ Cc    If a combination of two polarization inputs is provided, the user can sele
                         Open(8,File='Long_input.txt')
        !Write(8,126)'parm=', '      Default value', '    Name, Units'
        Write(8,77)  'Nparms;', 7, '; ;user ;Number of fit Parms' 
-       Write(8,77)  'Angular Code;',  0, '; ;user ;0L for PK, 1L for FK'
+       Write(8,77)  'Angular Code;',  0, '; ;data ;0L for PK, 1L for FK'
        Write(8,77)  'Npix;', 128, '; ;data ;Number of pixels sent to dll' 
        !Write(8,77)  'NpicY;', 128, ';Number of pixels along y axes' 
        Write(8,77)'Nfreq;', 24,   '; ;data ;Number of frequencies in the spectrum' 
