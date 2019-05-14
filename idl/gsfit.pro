@@ -1444,7 +1444,7 @@ pro gsfit_event,event
                      exit_bridges:
                    end                                           
    state.wHelp: begin
-                 help='http://www.ovsa.njit.edu/wiki/index.php/GSFIT_GUI_Organization_and_Functionality'
+                 help='http://www.ovsa.njit.edu/wiki/index.php/GSFIT_Help'
                  if !version.os_family eq 'Windows' then spawn,'start /max '+help else answ=dialog_message(' For help, please open ' +help+' in your preffred browser.')    
                 end                                      
    else:

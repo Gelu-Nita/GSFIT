@@ -1,26 +1,26 @@
 
 function gsfitcp_get_bridges
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   return,bridges
 end
 
 function gsfitcp_get_tasklist
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   return,tasklist
 end
 
 function gsfitcp_get_maps
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   return,maps
 end
 
 function gsfitcp_get_cpinput
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   return,cpinput
 end
 
 function gsfitcp_where,pending=pending,completed=completed,aborted=aborted,active=active,count
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   if ~obj_valid(tasklist) then begin
     count=0
     return,-1
@@ -56,7 +56,7 @@ end
 
 
 pro gsfitcp_set_bridges, nbridges,new=new,force=force
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
     if n_elements(nbridges) eq 0 then nbridges=1 else nbridges=nbridges>1
     if (nbridges gt !CPU.HW_NCPU ) and (~keyword_set(force)) then begin
       message, string(!CPU.HW_NCPU, nbridges,format="('The number of bridges is limited to the ',g0, ' available CPUs! Use IDL> gsfitcp,nbridges,/force if you are sure you really want to create ',g0,' bridges!')"),/info
@@ -122,8 +122,18 @@ pro gsfitcp_set_bridges, nbridges,new=new,force=force
   end
   
 pro gsfitcp_set_maps, datafile
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
-  restore,datafile
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
+   osav=obj_new('idl_savefile',datafile)
+   names=osav->names()
+   valid=0
+   for i=0,n_elements(names)-1 do begin
+     osav->restore,names[i]
+     e=execute('result=size('+names[i]+',/tname)')
+     if (result eq 'STRUCT') then begin
+       e=execute('eomaps=temporary('+names[i]+')')
+     endif
+   endfor
+   obj_destroy,osav
   if valid_map(eomaps) then begin
     maps=temporary(eomaps)
     sz=size(maps.data)
@@ -141,7 +151,7 @@ pro gsfitcp_set_maps, datafile
 end
 
 pro gsfitcp_add_task, task, remove_existent=remove_existent
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
      if n_elements(tasklist) eq 0 then tasklist=list()
      if keyword_set(remove_existent) then tasklist->Remove,/all
      count=bridges->Count()
@@ -168,8 +178,8 @@ pro gsfitcp_add_task, task, remove_existent=remove_existent
      message,string (count,format="('Tasks list updated: ',g0, ' pending tasks in the proceesing queue')"),/info
 end
 
-pro gsfitcp_clear_tasks
- common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+pro gsfitcp_flush_queue
+ common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
  if n_elements(tasklist) eq 0 then tasklist=list()
  tasklist->Remove,/all
  pending=gsfitcp_where(/pending,count)
@@ -177,13 +187,13 @@ pro gsfitcp_clear_tasks
 end
 
 pro gsfitcp_close_bridges
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
    if obj_valid(bridges) then obj_destroy,bridges
 end
 
 
 pro gsfitcp_sendfittask,bridge,task
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   if size(maps,/tname) ne 'STRUCT' then return
   freqs=reform(maps[*,0].freq)
   times=reform(maps[0,*].time)
@@ -247,7 +257,7 @@ pro gsfitcp_sendfittask,bridge,task
 end
 
 pro gsfitcp_start
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   if tasklist.IsEmpty() then begin
     message,'No tasks in queue, nothing to be done!',/info
     return
@@ -284,7 +294,7 @@ pro gsfitcp_start
 end
 
 pro gsfitcp_readframe, bridge,task
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   spec_in=bridge->GetVar('spec_in')
   spec_out=bridge->GetVar('spec_out')
   aparms=bridge->GetVar('aparms')
@@ -330,15 +340,15 @@ end
 
 
 pro gsfitcp_status,quiet=quiet,nobridges=nobridges
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
     active=0
     if ~obj_valid(bridges) then begin
-      if ~keyword_set(quiet) then message, 'No bridges alive, use IDL>gsfitcp_set_bridges[,nbridges] to create at least one.',/info
+      if ~keyword_set(quiet) then message, 'No bridges alive, use IDL>gsfitcp,nbridges to create at least one.',/info
       return
     endif
     bridge_array=bridges->Get(/all,count=count)
     if count eq 0 then begin
-      if ~keyword_set(quiet) then  message, 'No bridges alive, use IDL>gsfitcp[,nbridges] to create at least one.',/info
+      if ~keyword_set(quiet) then  message, 'No bridges alive, use IDL>gsfitcp,nbridges to create at least one.',/info
       return
     endif
     for i=0,count-1 do begin
@@ -380,7 +390,7 @@ pro gsfitcp_status,quiet=quiet,nobridges=nobridges
 end
 
 pro gsfitcp_callback,status,error,bridge,userdata
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   bridge_id=bridge->GetVar('id')
   task_id=bridge->GetVar('task_id')
   start_time=bridge->GetVar('start_time')
@@ -399,11 +409,14 @@ pro gsfitcp_callback,status,error,bridge,userdata
     task.duration=duration
     tasklist(task.id)=task
   endelse
-  ;message,strcompress(string(bridge_id, task_id,task.status,task.duration,format="('Bridge',i2,'-Task ',i8,': ',a0,' in ', g0, 's')")),/info
-  print,'________________________'
-  message,strcompress(string(n_elements(task.idx),task.duration,format="(g0,' pixels fitted in ',g0,' seconds')")),/info
-  gsfitcp_status,/nobridges
-  print,'________________________'
+  
+  if ~keyword_set(cpquiet) then begin
+    print,'________________________'
+    message,strcompress(string(n_elements(task.idx),task.duration,format="(g0,' pixels fitted in ',g0,' seconds')")),/info
+    gsfitcp_status,/nobridges
+    print,'________________________'
+  end
+  
   pending=gsfitcp_where(/pending,task_count)
   if task_count gt 0 and ~keyword_set(abort) then begin
     task=tasklist(pending[0])
@@ -411,33 +424,76 @@ pro gsfitcp_callback,status,error,bridge,userdata
   endif else  begin
     completed=gsfitcp_where(/completed,/aborted,ccount)
     if ccount eq tasklist->Count() then begin
-      free_lun,lun
+      if lun gt 0 then free_lun,lun
       message, 'All tasks have been processed and results looged to ' +cplog+'. Use IDL>map=gsfit_log2map("'+cplog+'") to retrieve fit results.',/info
-      gsfitcp_clear_tasks
+      gsfitcp_flush_queue
     endif
   endelse
 end
 
 pro gsfitcp_abort
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   allbridges=bridges->Get(/all,count=count)
   for i=0,count-1 do begin
     code=allbridges[i]->Status(error=error)
+    active=0
     if code eq 1 then begin
+      active+=1
+      message,strcompress(string(id,format="('Working on aborting the active task on Bridge # ', g0,', please wait....')")),/cont
       allbridges[i]->Abort
       id=allbridges[i]->GetVar('id')
       message,strcompress(string(id,format="('Bridge # ', g0,' execution aborted on user request!')")),/cont
     endif
   end
+  if active eq 0 then message, 'No active tasks, nothing to be aborted!',/cont else $
+  message,'All active tasks aborted on user request!',/cont
+  gsfitcp_flush_queue
+  message,'All pending tasks have been deleted from memory on user request!',/cont
+  gsfitcp_status
 end
 
 
-pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,_extra=_extra
-  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog
+pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abort=abort,flush=flush,exit=exit,_extra=_extra
+  common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   if keyword_set(status) then begin
     gsfitcp_status
     return
   endif
+  if keyword_set(flush) then begin
+    gsfitcp_flush_queue
+    return
+  endif
+  if keyword_set(abort) then begin
+    gsfitcp_abort
+    return
+  endif
+  if keyword_set(exit) then begin
+    gsfitcp_flush_queue
+    obj_destroy,bridges
+    obj_destroy,bridges
+    if lun gt 0 then free_lun,lun
+    dummy=temporary(cplog)
+    dummy=temporary(tasklist)
+    dummy=temporary(maps)
+    dummy=temporary(cpinput)
+    dummy=temporary(cpquiet)
+    return
+  endif
+  if N_PARAMS() eq 0 then begin
+    message,'For a detailed description visit http://www.ovsa.njit.edu/wiki/index.php/GSFITCP_Help, or use one of the folowing calling sequences:',/cont
+    print,'% IDL-> gsfitcp, taskfilename; to provide a path to a stored GSFIT task stracture
+    print,'% IDL-> gsfitcp, taskstructure; to provide an already restored GSFIT task structure
+    print,'% IDL-> gsfitcp, nthreads; to set,increase, or decrease the number of ashyncronious threads to be used
+    print,'% IDL-> gsfitcp, out=out,log; to change the default "gsfitcp.log" path for run-time logging of the results.
+    print,'% IDL-> gsfitcp, /status; to report the status of the application
+    print,'% IDL-> gsfitcp, /quiet; to inhibit automatic printing of progress report messages at run-time
+    print,'% IDL-> gsfitcp, /start; to start processing the task queue
+    print,'% IDL-> gsfitcp, /flush; to flush the pending task queue
+    print,'% IDL-> gsfitcp, /abort; to abort all active tasks and flush the pending task queue
+    print,'% IDL-> gsfitcp, /exit; to abort all active tasks, flush the pending task queue, and exit the apllication
+    message,'% Any logical combination of the arguments and keywords listed above should result in a valid single-line calling sequence',/cont
+  endif
+  cpquiet=keyword_set(quiet)
   if is_number(cp_input) then nbridges=temporary(cp_input)
   if is_number(nbridges) or n_elements(bridges) eq 0 then gsfitcp_set_bridges, nbridges,_extra=_extra
   if size(out,/tname) eq 'STRING' then begin
@@ -450,32 +506,68 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,_extra=_extra
       cplog=out
   endif else lun=0
   endif
+
+;CP_INPUT ARGUMENT PROVIDED  SECTION
   if n_elements(cp_input) gt 0 then begin
-  case size(cp_input,/tname) of
-      'STRING': begin
-                 if file_exist(cp_input) then begin
-                  restore,cp_input
-                  if n_elements(cpinput) eq 0 then begin
-                    message,'unexpected file content',/cont
+        case size(cp_input,/tname) of
+            'STRING': begin
+                       if file_exist(cp_input) then begin
+                        osav=obj_new('idl_savefile',cp_input)
+                         names=osav->names()
+                         valid=0
+                         for i=0,n_elements(names)-1 do begin
+                           osav->restore,names[i]
+                           e=execute('result=size('+names[i]+',/tname)')
+                           if (result eq 'STRUCT') then begin
+                             e=execute('cp_input=temporary('+names[i]+')')
+                           endif
+                         endfor
+                         obj_destroy,osav
+                        if size(cp_input,/tname) ne 'STRUCT' then begin
+                          message,'unexpected file content',/cont
+                          return
+                        endif else goto,cpstruct
+                       endif else begin
+                        message,cp_input+': the task fileme argument provided is not avalid path on thismachine',/cont
+                        return
+                       endelse
+                      end
+            'STRUCT': begin
+                        cpstruct:
+                        tnames=tag_names(cp_input)
+                        enames=['NPARMS','RPARMS','PARMS_IN','PARMS_OUT','PATH','RMS','DATAPATH','TASK']
+                        tnames=tnames[sort(tnames)]
+                        enames=enames[sort(enames)]
+                        cpvalid=tag_exist(cp_input, 'NPARMS') and $
+                                tag_exist(cp_input, 'RPARMS') and $
+                                tag_exist(cp_input, 'PARMS_IN') and $
+                                tag_exist(cp_input, 'PARMS_OUT') and $
+                                tag_exist(cp_input, 'DATAPATH') and $
+                                tag_exist(cp_input, 'GET_FUNCTION')
+                        if ~cpvalid then begin
+                          message,'provided cp_input argument is not a valid gsfit command prompt input structure',/cont
+                          return  
+                        endif else cpinput=cp_input   
+                      end     
+            else: begin 
+                    message,'No valid cp_input argument provided',/cont
                     return
-                  endif
-                 endif else begin
-                  message,cp_input+'the file provided as a filename argument does not exist',/cont
-                  return
-                 endelse
-                end
-      'STRUCT': if fix(total(tag_names(cp_input) eq ['NPARMS','RPARMS','PARMS_IN','PARMS_OUT','PATH','RMS','DATAPATH','TASK'])) ne 8 then begin
-                    message,'provided cp_input argument is not a valid gsfit command prompt input structure',/cont
-                    return  
-                endif else cpinput=cp_input      
-      else: begin 
-              message,'No valid cp_input argument provided',/cont
+                  end  
+          endcase
+          if ~file_exist(cpinput.datapath) then begin
+            message,'No valid data file path provided! Plese manually select a valid data file to cntinue',/cont
+            cpinput.datapath=dialog_pickfile(filter='*.sav',title='Please select a filename containing valid GSFIT data input structure')
+            if ~file_exist(cpinput.datapath) then begin
+              message,['The attempt to replace the data path failed. Sorry, I cannot continue from here!',' Please manually fix the datapath tag in the cpinput structure and try again.'],/info
               return
-            end  
-    endcase
-    if file_exist(cpinput.datapath) then gsfitcp_set_maps, cpinput.datapath else message,'No valid data file path provided!',/info
-    if size(cpinput.task,/tname) eq 'STRUCT' then gsfitcp_add_task, cpinput.task,/remove
+            endif
+          endif
+          gsfitcp_set_maps, cpinput.datapath 
+          if size(cpinput.task,/tname) eq 'STRUCT' then gsfitcp_add_task, cpinput.task,/remove
   end
-   
-  if keyword_set(start) and size(cpinput,/tname) eq 'STRUCT' then gsfitcp_start else message,'No cpinput string or structure argument provided. Please use "gsfitcp, cpinput" to provide one.',/cont
+;END OF CP_INPUT ARGUMENT PROVIDED SECTION
+    
+  if keyword_set(start) then begin
+    if size(cpinput,/tname) eq 'STRUCT' then gsfitcp_start else message,'No cpinput string or structure argument provided. Please use "gsfitcp, cpinput" to provide one.',/cont
+  endif
 end

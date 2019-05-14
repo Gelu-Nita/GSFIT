@@ -14,8 +14,18 @@ pro gsfitview_event,event
                            END  
      '':begin
                   if tag_exist(event,'MAPS') then begin
-                    maps=event.maps
-                    goto,opencube 
+                    case size(event.maps,/tname) of
+                      'STRUCT': begin
+                                  maps=event.maps
+                                  goto,opencube
+                                end
+                      'STRING': begin
+                                 file=event.maps
+                                 if file_exist(file) then goto,openfile
+                                 end 
+                      else:
+                     endcase                    
+                         
                   end  
                  end 
      else:
@@ -243,8 +253,9 @@ pro gsfitview_event,event
                    end    
    state.wopen: begin
                  file=dialog_pickfile(filter='*.sav',title='Select an IDL sav file containg a parmfit structure')
-                 if file ne '' then begin
-                  
+                 openfile:
+                 default,file,''
+                 if file ne '' then begin                 
                    osav=obj_new('idl_savefile',file)
                    names=osav->names()
                    valid=0
@@ -444,17 +455,11 @@ pro gsfitview_event,event
                    draw=1
                   end                                                                           
    
+
    state.wHelp: begin
-
-      message=['Use the Open toolbar button to restore an IDL file containing fit map structure',$
-               'Use the Import Fit List toolbar button to restore an IDL file containing a fit list structure',$ 
-               'Click the mouse right button or use x-y scroll bars to move the cursor within the fitted region.',$
-               'Press-Hold-Move-Release the the mouse left button to zoom in.',$
-               'Click the left mouse button to display the full field of view of the selected/reference map.' ]
-
-      answ=dialog_message(message,/info)
-    end             
-                                 
+                 help='http://www.ovsa.njit.edu/wiki/index.php/GSFITVIEW_Help'
+                 if !version.os_family eq 'Windows' then spawn,'start /max '+help else answ=dialog_message(' For help, please open ' +help+' in your preffred browser.')    
+                end                    
                  
    else:
   endcase
@@ -659,50 +664,64 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   endcase
   xrange=state.ppd_data_xrange
   yrange=state.ppd_data_yrange
+;  if (xrange[0] eq xrange[1]) or  (yrange[0] eq yrange[1]) then begin
+;    xrange=get_map_xrange(displaymap)
+;    yrange=get_map_yrange(displaymap)
+;  endif
   widget_control,state.wRefMapOptions.Show,get_value=showrefmap
   widget_control,state.wRefMapOptions.level,get_value=level
-  widget_control,state.wRefMapOptions.order,get_value=order
+  widget_control,state.wRefMapOptions.order,get_value=contour
   
   
   if keyword_set(showrefmap) then begin
-     if keyword_set(order) then begin
-        backmap=displaymap
-        frontmap=refmap
+     if keyword_set(contour) then begin
+        plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
+        plot_map,refmap,/over,levels=level,/per,thick=3,color=255,xshift=xshift,yshift=yshift
      endif else begin
-        frontmap=displaymap
-        backmap=refmap
+        plot_map,refmap,title=refmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift
+        plot_map,displaymap,/over,levels=level,/per,thick=3,color=255
     endelse
-    plot_map,backmap,title=backmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift
-    plot_map,frontmap,/over,levels=level,/per,thick=3,color=255
-  endif else plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
+  endif else  plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
   
   oplot,xpix[[i,i]],!y.crange,linesty=2,color=250,thick=3
   oplot,!x.crange,ypix[[j,j]],linesty=2,color=250,thick=3
   widget_control,state.wHist.check,get_value=check
-  if ~state.wHist.xroi.IsEmpty() then plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=255
+  if ~state.wHist.xroi.IsEmpty() then plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=250,thick=3
   g={x:!x,y:!y,z:!z,p:!p}
   widget_control,state.wdatamap,set_uvalue=g
   widget_control,state.wparmap,set_uvalue=g
   
   wset,wparmap
   parmap.data=parmap.data>0
+;  if keyword_set(showrefmap) then begin
+;    if keyword_set(contour) then begin
+;      backmap=parmap
+;      frontmap=refmap
+;    endif else begin
+;      frontmap=parmap
+;      backmap=refmap
+;    endelse
+;    plot_map,backmap,title=backmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift
+;    plot_map,frontmap,/over,levels=level,/per,thick=3,color=255
+;  endif else plot_map,parmap,title=parmap.id ,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
   if keyword_set(showrefmap) then begin
-    if keyword_set(order) then begin
-      backmap=parmap
-      frontmap=refmap
-    endif else begin
+    if keyword_set(contour) then begin
+      plot_map,parmap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
+      plot_map,refmap,/over,levels=level,/per,thick=3,color=255,xshift=xshift,yshift=yshift
       frontmap=parmap
-      backmap=refmap
+    endif else begin
+      plot_map,refmap,title=refmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift
+      plot_map,parmap,/over,levels=level,/per,thick=3,color=255
+      frontmap=refmap
     endelse
-    plot_map,backmap,title=backmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift
-    plot_map,frontmap,/over,levels=level,/per,thick=3,color=255
-    get_map_coord,frontmap,xp,yp
-  endif else plot_map,parmap,title=parmap.id ,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
+  endif else  plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
+  
   oplot,xpix[[i,i]],!y.crange,linesty=2,color=250,thick=3
   oplot,!x.crange,ypix[[j,j]],linesty=2,color=250,thick=3
-  if ~state.wHist.xroi.IsEmpty() then plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=255
+  if ~state.wHist.xroi.IsEmpty() then plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=250,thick=3
   
   if keyword_set(showrefmap) then begin
+      get_map_coord,frontmap,xp,yp
       contour,frontmap.data,xp,yp,levels=level*max(frontmap.data)/100,path_xy=xy,path_info=info,/PATH_DATA_COORDS
       m=max(info.n,k)
       FOR k = 0, (N_ELEMENTS(info) - 1 ) DO BEGIN 
@@ -710,9 +729,6 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
         xroi=(k eq 0)? reform(xy[0,INFO(k).OFFSET + S ]):[xroi,reform(xy[0,INFO(k).OFFSET + S ])]
         yroi=(k eq 0)? reform(xy[1,INFO(k).OFFSET + S ]):[yroi,reform(xy[1,INFO(k).OFFSET + S ])]
       end  
-;        S = [INDGEN(info(k).N), 0]
-;        xroi=reform(xy[0,INFO(k).OFFSET + S ])
-;        yroi=reform(xy[1,INFO(k).OFFSET + S ])
        widget_control,state.wRefROI,set_uvalue={x:xroi,y:yroi}
   endif else  widget_control,state.wRefROI,set_uvalue={x:displaymap.xc,y:displaymap.yc}  
   
@@ -988,11 +1004,14 @@ pro gsfitview,maps
     ) 
   
   winfobase=widget_base(row7_base,/row,/frame)
-  plot_options_base=widget_base(winfobase,/column)
-  wSpectralPlotOptions=cw_objPlotOptions(plot_options_base,uname='Spectral Plot Options',/xlog,/ylog)
+  
+  plot_options_base=!version.os_family eq 'Windows'?widget_base(winfobase,/column):widget_tab(winfobase)
+  
+  wSpectralPlotOptions=cw_objPlotOptions(widget_base(plot_options_base,title='Spectral Plot Options'),uname=!version.os_family eq 'Windows'?'Spectral Plot Options':'',/xlog,/ylog)
   widget_control,wSpectralPlotOptions,get_value=objSpectralPlotOptions
-  wTimeProfileOptions=cw_objPlotOptions(plot_options_base,uname='Time Profile Plot Options')
-  g2=widget_info(wTimeProfileOptions,/geometry)
+  wTimeProfileOptions=cw_objPlotOptions(widget_base(plot_options_base,title='Time Plot Options'),uname=!version.os_family eq 'Windows'?'Time Plot Options':'')
+  
+  g2=widget_info(plot_options_base,/geometry)
   wInfo=widget_text(winfobase,scr_xsize=xsize*hist_scale-g2.scr_xsize,scr_ysize=xsize,/align_left,uname='info',/scroll)
 
   if !version.os_family eq 'Windows' then set_plot,'win' else set_plot,'x'                      
