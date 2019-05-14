@@ -455,6 +455,13 @@ end
 
 pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abort=abort,flush=flush,exit=exit,_extra=_extra
   common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
+  if n_elements(quiet) gt 0 then begin
+    cpquiet=keyword_set(quiet)
+    case cpquiet of
+      0: message,'Run-time progress report messages turned on! Use "IDL> gsfitcp,/quiet" to turn them off.',/cont
+      else:  message,'Run-time progress report messages turned off! Use "IDL> gsfitcp, quiet=0" to turn them on.',/cont
+    endcase
+  endif
   if keyword_set(status) then begin
     gsfitcp_status
     return
@@ -479,7 +486,7 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
     dummy=temporary(cpquiet)
     return
   endif
-  if N_PARAMS() eq 0 then begin
+  if N_PARAMS() eq 0 and n_elements(quiet) eq 0 then begin
     message,'For a detailed description visit http://www.ovsa.njit.edu/wiki/index.php/GSFITCP_Help, or use one of the folowing calling sequences:',/cont
     print,'% IDL-> gsfitcp, taskfilename; to provide a path to a stored GSFIT task stracture
     print,'% IDL-> gsfitcp, taskstructure; to provide an already restored GSFIT task structure
@@ -493,7 +500,7 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
     print,'% IDL-> gsfitcp, /exit; to abort all active tasks, flush the pending task queue, and exit the apllication
     message,'% Any logical combination of the arguments and keywords listed above should result in a valid single-line calling sequence',/cont
   endif
-  cpquiet=keyword_set(quiet)
+
   if is_number(cp_input) then nbridges=temporary(cp_input)
   if is_number(nbridges) or n_elements(bridges) eq 0 then gsfitcp_set_bridges, nbridges,_extra=_extra
   if size(out,/tname) eq 'STRING' then begin
