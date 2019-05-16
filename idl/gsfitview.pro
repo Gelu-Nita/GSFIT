@@ -714,7 +714,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
       plot_map,parmap,/over,levels=level,/per,thick=3,color=255
       frontmap=refmap
     endelse
-  endif else  plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
+  endif else  plot_map,parmap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
   
   oplot,xpix[[i,i]],!y.crange,linesty=2,color=250,thick=3
   oplot,!x.crange,ypix[[j,j]],linesty=2,color=250,thick=3
