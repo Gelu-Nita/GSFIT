@@ -912,7 +912,7 @@ pro gsfitview2png,state
       filename=dialog_pickfile(Title='Accept or choose file name to save selected panels as PNG',default='png',filter='*.png',file=filename,/overwrite,/write)
       if filename ne '' then WRITE_PNG,filename, check[5]?[[[img.(idx[2])]] ,[[img.(idx[1])]],[[img.(idx[0])]]] :[[img.(idx[0])] ,[img.(idx[1])],[img.(idx[2])]] 
      end
-  else:answ=dialog_message('Sorry, at least one, but more than 3 panels may be selected at this time to create PNG figures!')
+  else:answ=dialog_message('At least one, but more than 3 panels may be selected at this time to create PNG figures!')
  endcase
 end
 
