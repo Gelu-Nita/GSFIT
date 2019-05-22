@@ -8,8 +8,6 @@ errWB=vol*2*maps.b.data*maps.errb.data/8./!pi
 del=maps.delta.data
 Wnth=vol*1.6d-9*emin*(del-1)/(del-2)*maps.n_nth.data
 errWnth=vol*1.6d-9*emin*sqrt(maps.errdelta.data^2*maps.n_nth.data^2/(del-2)^4+((del-1)/(del-2)*maps.errn_nth.data)^2)
-;Wnth=vol*1.6d-9*emin*(del-1)/(del-2)*maps.nrl.data
-;errWnth=vol*1.6d-9*emin*sqrt(maps.errdelta.data^2*maps.nrl.data^2/(del-2)^4+((del-1)/(del-2)*maps.errnrl.data)^2)
 if ~tag_exist(maps,'WB') or ~tag_exist(maps,'Wnth') then begin
   WBmap=maps.b
   WBmap.id='WB'

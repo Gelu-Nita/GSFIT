@@ -455,7 +455,7 @@ pro gsfitview_event,event
                    draw=1
                   end                                                                           
    
-
+   state.wPNG:gsfitview2png,state
    state.wHelp: begin
                  help='http://www.ovsa.njit.edu/wiki/index.php/GSFITVIEW_Help'
                  if !version.os_family eq 'Windows' then spawn,'start /max '+help else answ=dialog_message(' For help, please open ' +help+' in your preffred browser.')    
@@ -468,8 +468,10 @@ pro gsfitview_event,event
   widget_control,widget_info(event.top,Find_By_Uname='STATEBASE'),set_uvalue=state
 end
 
-pro  gsfitview_display_statistics,state,save=save,ps=ps
+pro gsfitview_display_statistics,state,save=save,ps=ps
  if ~ptr_valid(state.pmaps) then return
+ charsize=1.2
+ charthick=2
  widget_control,state.whist.check, get_value =check
  time=reform((*state.pmaps).datamaps[0,*].time)
  widget_control,state.wtime,get_value=time_idx
@@ -517,14 +519,23 @@ pro  gsfitview_display_statistics,state,save=save,ps=ps
  
  if n_elements(ij) lt 1 then ij=lindgen(state.nx*state.ny)
  
+ parm_trend=dblarr(2,state.ntimes)*!values.f_nan
+ 
  for i=0,state.ntimes-1 do begin
    parmap=((*state.pmaps).(parm_index))[i]
    parm=parmap.data
    parm=parm[ij]
-   
    good=where(parm gt 0,count )
    if count gt 0 then begin
     parm=parm[where(parm gt 0 )]
+    
+    mom=moment(parm,sdev=sdev,mean=mean,/nan,/double)
+    if (n_elements(parm) gt 1) then begin
+    sdev=sdev  
+    endif else sdev=0
+    parm_trend[0,i]=mean
+    parm_trend[1,i]=sdev
+    
     if logbins then h[*,i]=histogram(alog10(parm),min=alog10(range[0]),max=alog10(range[1]),nbins=nbins,loc=loc) $
     else h[*,i]=histogram(parm,min=range[0],max=range[1],nbins=nbins,loc=loc)
    end 
@@ -551,7 +562,7 @@ pro  gsfitview_display_statistics,state,save=save,ps=ps
     filter='*.ps',title='Please choose a postscrip filename to plot the histogram',/write )
   device,file=file,/colo,bits=8
   !p.multi=[0,2,2]
- lightcurve=((*state.pmaps).(parm_index)).data
+  lightcurve=((*state.pmaps).(parm_index)).data
     widget_control,state.wx,get_value=i,get_uvalue=xpix
     widget_control,state.wy,get_value=j,get_uvalue=ypix
     lc=lightcurve[i,j,*]
@@ -560,13 +571,16 @@ pro  gsfitview_display_statistics,state,save=save,ps=ps
       errlc=errlightcurve[i,j,*]
     endif
   spectro_plot,transpose(h),anytim(time),loc,/xsty,/ysty,ytitle=xtitle,xtitle='Time',ylog=logbins,zlog=loghist,color=255
+  
   if over2d then begin
   outplot,time,lc,color=255,thick=1,psym=2
   if errparm_index[0] gt 0 then begin
     uterrplot,time,lc-errlc,lc+errlc
   endif
   end
-  
+ 
+ outplot,time[[time_idx,time_idx]],!y.crange,linesty=2,color=250,thick=3
+ 
  plot,loc,total(h,2)>1,/xsty,xtitle=xtitle,ytitle='Counts',ylog=loghist,psym=10,xlog=logbins
  endif else begin
   widget_control,state.wHist.plot,get_value=w
@@ -575,9 +589,7 @@ pro  gsfitview_display_statistics,state,save=save,ps=ps
   
   if keyword_set(colapse) then begin
    plot,loc,total(h,2)>1,/xsty,xtitle=xtitle,ytitle=ytitle,ylog=loghist,psym=10,xlog=logbins
-   ;plot,total(h,2)>1,loc,/xsty,xtitle=ytitle,ytitle=xtitle,xlog=loghist,psym=0,ylog=logbins
   endif else begin
-    ;tvplot,loghist?alog10(h):h,loc,sample=1,/xsty,xtitle=xtitle,ytitle=ytitle,xlog=logbins
     lightcurve=((*state.pmaps).(parm_index)).data
     widget_control,state.wx,get_value=i,get_uvalue=xpix
     widget_control,state.wy,get_value=j,get_uvalue=ypix
@@ -586,13 +598,20 @@ pro  gsfitview_display_statistics,state,save=save,ps=ps
       errlightcurve=((*state.pmaps).(errparm_index)).data
       errlc=errlightcurve[i,j,*]
     endif
-  spectro_plot,transpose(h),anytim(time),loc,/xsty,/ysty,ytitle=xtitle,xtitle='Time',ylog=logbins,zlog=loghist,color=255
+  spectro_plot,transpose(h),anytim(time),loc,/xsty,/ysty,ytitle=xtitle,xtitle='Time',ylog=logbins,zlog=loghist,color=255,$
+    title=(state.whist.xroi.Count() le 1)?'FOV Histograms':(check[0] eq 1)?'Out of ROI Histograms':'ROI Histograms',charsize=charsize,charthick=charthick
+   
    if over2d then begin
-     outplot,time,lc,color=255,thick=1,psym=2
+     ;lc=parm_trend[0,*]
+     ;errlc=parm_trend[1,*]
+     outplot,time,lc,thick=1,psym=2;,color=255
      if errparm_index[0] gt 0 then begin
-       uterrplot,time,lc-errlc,lc+errlc
+       uterrplot,time,lc-errlc,lc+errlc,thick=1;,color=250
+       ;outplot,time,lc-errlc,thick=2,color=250
+       ;outplot,time,lc+errlc,thick=2,color=250
      endif
    end
+   outplot,time[[time_idx,time_idx]],logbins?10^!y.crange:!y.crange,linesty=2,color=250,thick=3
   endelse
  endelse
 
@@ -617,6 +636,8 @@ end
 
 pro gsfitview_draw,state, draw=draw,_extra=_extra
  if ~ptr_valid(state.pmaps) or ~keyword_set(draw) then return
+ charsize=1.2
+ charthick=2
  geometry=widget_info(state.wDataMap,/geometry)
  sz=size((*state.pmaps).datamaps.data)
  widget_control,state.wdatamap,get_value=wdatamap
@@ -664,10 +685,6 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   endcase
   xrange=state.ppd_data_xrange
   yrange=state.ppd_data_yrange
-;  if (xrange[0] eq xrange[1]) or  (yrange[0] eq yrange[1]) then begin
-;    xrange=get_map_xrange(displaymap)
-;    yrange=get_map_yrange(displaymap)
-;  endif
   widget_control,state.wRefMapOptions.Show,get_value=showrefmap
   widget_control,state.wRefMapOptions.level,get_value=level
   widget_control,state.wRefMapOptions.order,get_value=contour
@@ -675,13 +692,13 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   
   if keyword_set(showrefmap) then begin
      if keyword_set(contour) then begin
-        plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
+        plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick
         plot_map,refmap,/over,levels=level,/per,thick=3,color=255,xshift=xshift,yshift=yshift
      endif else begin
-        plot_map,refmap,title=refmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift
+        plot_map,refmap,title=refmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift,charsize=charsize,charthick=charthick
         plot_map,displaymap,/over,levels=level,/per,thick=3,color=255
     endelse
-  endif else  plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
+  endif else  plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick
   
   oplot,xpix[[i,i]],!y.crange,linesty=2,color=250,thick=3
   oplot,!x.crange,ypix[[j,j]],linesty=2,color=250,thick=3
@@ -690,31 +707,20 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   g={x:!x,y:!y,z:!z,p:!p}
   widget_control,state.wdatamap,set_uvalue=g
   widget_control,state.wparmap,set_uvalue=g
-  
+
   wset,wparmap
   parmap.data=parmap.data>0
-;  if keyword_set(showrefmap) then begin
-;    if keyword_set(contour) then begin
-;      backmap=parmap
-;      frontmap=refmap
-;    endif else begin
-;      frontmap=parmap
-;      backmap=refmap
-;    endelse
-;    plot_map,backmap,title=backmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift
-;    plot_map,frontmap,/over,levels=level,/per,thick=3,color=255
-;  endif else plot_map,parmap,title=parmap.id ,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
   if keyword_set(showrefmap) then begin
     if keyword_set(contour) then begin
-      plot_map,parmap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
+      plot_map,parmap,title=parmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick
       plot_map,refmap,/over,levels=level,/per,thick=3,color=255,xshift=xshift,yshift=yshift
       frontmap=parmap
     endif else begin
-      plot_map,refmap,title=refmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift
+      plot_map,refmap,title=refmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift,charsize=charsize,charthick=charthick
       plot_map,parmap,/over,levels=level,/per,thick=3,color=255
       frontmap=refmap
     endelse
-  endif else  plot_map,parmap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange
+  endif else  plot_map,parmap,title=parmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick
   
   oplot,xpix[[i,i]],!y.crange,linesty=2,color=250,thick=3
   oplot,!x.crange,ypix[[j,j]],linesty=2,color=250,thick=3
@@ -752,14 +758,15 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
         pxrange=[1,20]
       end
       plot,freq,data_spectrum[i,j,*],xlog=xlog,ylog=ylog,xrange=pxrange,yrange=pyrange,psym=2,$
-        xtitle='Frequency (GHz)',ytitle='Flux density [sfu/pixel]',title='Spectral Fit',ymargin=[6,6],/xsty,/ysty
+        xtitle='Frequency (GHz)',ytitle='Flux density [sfu/pixel]',title='Spectral Fit',ymargin=[6,6],/xsty,/ysty,charsize=charsize,charthick=charthick
       oploterr, freq, data_spectrum[i,j,*], err_spectrum[i,j,*]*2, psym=3;, hatlength=2, errcolor=255 
       oplot,freq,fit_spectrum[i,j,*],color=150,thick=3
-      oplot,freq[[freq_idx,freq_idx]],10^!y.crange,linesty=2,color=250
+      oplot,freq[[freq_idx,freq_idx]],10^!y.crange,linesty=2,color=250,thick=3
       if range eq 'Auto' then objSpectralPlotOptions->SetProperty,xrange=keyword_set(xlog)?10^!x.crange:!x.crange, yrange=keyword_set(ylog)?10^!y.crange:!y.crange
     endif else erase,0
-  
-     wset,wtimeplot
+    
+    
+    wset,wtimeplot
      if i lt sz[1] and j lt sz[2] then begin
       if n_elements(range) gt 0 then dummy=temporary(range)
       if n_elements(pxrange) gt 0 then dummy=temporary(pxrange)
@@ -789,21 +796,25 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
         CATCH, /CANCEL
       ENDIF
     
-      utplot,time,lc,ytitle=parmap.id,psym=3,title=parmap.id+' Evolution',/xsty,/ysty,ymargin=[6,6],ylog=ylog,xlog=xlog,xrange=pxrange,yrange=pyrange
+      utplot,time,lc,ytitle=parmap.id,psym=3,title=parmap.id+' Evolution',/xsty,/ysty,ymargin=[6,6],ylog=ylog,xlog=xlog,xrange=pxrange,yrange=pyrange,charsize=charsize,charthick=charthick
       outplot,time,lc,color=150,thick=3,psym=2
       if errparm_index[0] gt 0 then begin
        uterrplot,time,lc-errlc,lc+errlc
       endif
-      outplot,time[[time_idx,time_idx]],!y.crange,linesty=2,color=250
+      outplot,time[[time_idx,time_idx]],keyword_set(ylog)?10^!y.crange:!y.crange,linesty=2,color=250,thick=3
+      good=where(lc,count)
+      if count gt 0 then begin
+        mom=moment(lc[good],mean=mean,sdev=sdev,/nan,/double)
+         outplot,minmax(time),mean[[0,0]]
+         outplot,minmax(time),mean+sdev[[0,0]],linesty=1
+         outplot,minmax(time),mean-sdev[[0,0]],linesty=1
+      endif
       
       if range eq 'Auto' then objTimePlotOptions->SetProperty,xrange=keyword_set(xlog)?10^!x.crange:!x.crange, yrange=keyword_set(ylog)?10^!y.crange:!y.crange
-  
-  
     endif else erase,0 
   end
   
   gsfitview_display_statistics,state,_extra=_extra
-  
   tvlct,rgb_curr
   !p=psave
   
@@ -849,6 +860,60 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
     endfor
   endif else lines=''  
   widget_control,winfo,set_value=LINES
+end
+
+pro gsfitview2png,state
+ if ~ptr_valid(state.pmaps) then return
+ widget_control,state.wHist.check, get_value=hcheck
+ colapse=hcheck[4]
+ widget_control,state.wPNGCheck,get_value=check
+ parm_index=widget_info(state.wparmlist,/DROPLIST_SELECT)
+ widget_control,state.wparmlist,get_value=parm_list
+ parm_name=parm_list[parm_index]
+ widget_control,state.wx,get_value=i,get_uvalue=xpix
+ widget_control,state.wy,get_value=j,get_uvalue=ypix
+ widget_control,state.wfreqlabel,get_value=freq_label
+ widget_control,state.wtimelabel,get_value=time_label
+ widget_control,state.wdatamap,get_value=wdatamap
+ widget_control,state.wparmap,get_value=wparmap
+ widget_control,state.wspectrum,get_value=wspectrum
+ widget_control,state.wtimeplot,get_value=wtimeplot
+ widget_control,state.wHist.plot,get_value=whist
+ histname=strlowcase((((state.whist.xroi.Count() le 1)?'FOV':((hcheck[0] eq 1)?'OUTROI':'ROI')))+'hist'+(colapse?'1D':'2D'))
+ id=strmid(strreplace(strreplace(strreplace(atime(strmid(time_label,0,20),/y2k,/hxrbs),'/',''),', ','_'),':',''),0,15)+'-gsfit-'
+ freq='['+strcompress(strmid(freq_label,0,9),/rem)+']'
+ wset,wdatamap
+ img_datamap=tvrd(/true)
+ wset,wparmap
+ img_parmap=tvrd(/true)
+ wset,wtimeplot
+ img_timeplot=tvrd(/true)
+ wset,wspectrum
+ img_spectrum=tvrd(/true)
+ wset,whist
+ img_hist=tvrd(/true)
+ names=[freq+'datamap',parm_name+'map','['+strcompress(arr2str(long([i,j])),/rem)+']'+'spectrum','['+strcompress(arr2str(long([i,j])),/rem)+']'+parm_name+'timeplot',parm_name+histname]
+ img={datamap:img_datamap,parmap:img_parmap,spectrum:img_spectrum,timeplot:img_timeplot,hist:img_hist}
+ idx=where(check[0:4] eq 1,count)
+ check[5]=check[4]?0:check[5]
+ case count of
+  1: begin 
+       filename=id+names[idx]+'.png'
+       filename=dialog_pickfile(Title='Accept or choose file name to save selected panels as PNG',default='png',filter='*.png',file=filename,/overwrite,/write)
+       if filename ne '' then WRITE_PNG,filename, img.(idx)
+     end  
+  2: begin 
+      filename=id+names[idx[0]]+'-'+names[idx[1]]+'.png'
+      filename=dialog_pickfile(Title='Accept or choose file name to save selected panels as PNG',default='png',filter='*.png',file=filename,/overwrite,/write)
+      if filename ne '' then WRITE_PNG,filename, check[5]?[[[img.(idx[1])]] ,[[img.(idx[0])]]] :[[img.(idx[0])] ,[img.(idx[1])]] 
+     end
+  3: begin
+      filename=id+names[idx[0]]+'-'+names[idx[1]]+'-'+names[idx[2]]+'.png'
+      filename=dialog_pickfile(Title='Accept or choose file name to save selected panels as PNG',default='png',filter='*.png',file=filename,/overwrite,/write)
+      if filename ne '' then WRITE_PNG,filename, check[5]?[[[img.(idx[2])]] ,[[img.(idx[1])]],[[img.(idx[0])]]] :[[img.(idx[0])] ,[img.(idx[1])],[img.(idx[2])]] 
+     end
+  else:answ=dialog_message('Sorry, no more than 3 panels my be selected at this time!')
+ endcase
 end
 
 pro gsfitview,maps
@@ -916,6 +981,8 @@ pro gsfitview,maps
     /bitmap,tooltip='Save Histogram Data')
   wHistPS= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('plot.bmp', subdirectory=subdirectory)),$
     /bitmap,tooltip='Plot Histogram to PostScript File')
+  wPNG= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('window.bmp', subdirectory=subdirectory)),$
+    /bitmap,tooltip='Save selected panels to PNG')   
 
       
   wHelp= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('help.bmp', subdirectory=subdirectory)),$
@@ -926,22 +993,20 @@ pro gsfitview,maps
   wfreqlabel=widget_label(row1_base,xsize=xsize,value='Frequency',font=!defaults.font,/align_center,uname='freqlabel')
   wtimelabel=widget_label(row1_base,xsize=xsize,value='Time',font=!defaults.font,/align_center,uname='timelabel')
   hist_scale=1.25
-  wHistLabel=widget_label(row1_base,xsize=xsize*hist_scale,value='Histogram Settings',font=!defaults.font,/align_center);,scr_ysize=1.3*g.scr_ysize)
+  ;wHistLabel=widget_label(row1_base,xsize=xsize*hist_scale,value='Histogram Settings',font=!defaults.font,/align_center);,scr_ysize=1.3*g.scr_ysize)
 ;=======================================================================================================================    
   row2_base=widget_base(state_base,/row)
 ;=======================================================================================================================    
   wfreq=WIDGET_SLIDER(row2_base,xsize=xsize,max=maxfreq,uvalue='FREQ',font=!defaults.font,/suppress,uname='frequency')
   wtime=WIDGET_SLIDER(row2_base,xsize=xsize,uvalue='TIME',max=maxtime,font=!defaults.font,/suppress,uname='time')
- 
+  
 ;=======================================================================================================================    
   row3_base=widget_base(state_base,/row)
 ;=======================================================================================================================    
   wmaplist=WIDGET_DROPLIST(row3_base,xsize=xsize,value=['Data Maps'],uvalue='Map',font=!defaults.font)
   wparmlist=WIDGET_DROPLIST(row3_base,xsize=xsize,value=['Parameter Maps'],uname='Parm',font=!defaults.font)
-  
-;  hbase=widget_base(row3_base,xsize=xsize*hist_scale,/row,/frame)
-;  wHistRange=cw_objarray(hbase,/static,value=[0,0],font=!defaults.font,xtextsize=10,names=['Min','Max'])
-;  wHistBins=cw_objarray(hbase,value=100,xtextsize=5,names='nbins',inc=10,/static)
+  wPNGCheck=cw_bgroup(widget_base(row3_base,xsize=xsize*hist_scale,/row,/frame),['Data','Parm', 'Spec','Time','Hist','Vert'],SET_VALUE=0,/nonexclusive,/row,font=!defaults.font)
+
   
 ;=======================================================================================================================  
   row4_base=widget_base(state_base,/row)
@@ -970,11 +1035,10 @@ pro gsfitview,maps
     /button_events, $
     /motion_events, $
     retain=1, $
-    ;/expose_events, $
     graphics_level=1 $
     )    
     
-  wHistPlot=WIDGET_DRAW(row5_base,xsize=xsize*hist_scale,ysize=xsize,UNAME='HISTPLOT',graphics_level=1)    
+  wHistPlot=WIDGET_DRAW(row5_base,xsize=xsize*hist_scale,ysize=xsize,UNAME='HISTPLOT',graphics_level=1,retain=1)    
 ;=======================================================================================================================  
   row6_base=widget_base(state_base,/row)
 ;=======================================================================================================================    
@@ -999,7 +1063,6 @@ pro gsfitview,maps
     ) 
   wtimeplot=WIDGET_DRAW(row7_base,xsize=xsize,ysize=xsize,UNAME='TIMEPLOT',$
     retain=1, $
-    ;/expose_events, $
     graphics_level=1 $
     ) 
   
@@ -1018,7 +1081,7 @@ pro gsfitview,maps
   window,/free,/pixmap,xsiz=xsize,ysiz=xsize
   erase,0
   wpixmap=!d.window                        
-  WIDGET_CONTROL, /REALIZE, main_base
+  WIDGET_CONTROL, /REALIZE, main_base 
   default,nx,100l
   default,ny,100l
   default,nfreqs,100l
@@ -1067,7 +1130,9 @@ pro gsfitview,maps
     wTimeProfileOptions:wTimeProfileOptions,$
     wSpectralPlotOptions:wSpectralPlotOptions,$
     wRefmapOptions:{Show:wShowRef, Order:wRefOrder, level:wRefLevel},$
-    wRefROI: wRefROI $
+    wRefROI: wRefROI, $
+    wPNGCheck:wPNGCheck, $
+    wPNG:wPNG $
     }
   widget_control,state_base,set_uvalue=state  
   XMANAGER, 'gsfitview', main_base ,/no_block
