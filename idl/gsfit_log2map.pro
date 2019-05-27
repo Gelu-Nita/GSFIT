@@ -7,7 +7,7 @@ function gsfit_log2map,fitxfile,full_size=full_size,header=header,_extra=_extra
   Ntime=n_elements(t)
   Nfreq=n_elements(header.freq)
 
-  if ~tag_exist(fit[0],'peakflux') then begin ; here I assume that if peakflux tag does not yet exist peakfreq also does not
+  if ~tag_exist(fit[0],'peakflux') then begin ; here I assume that if peakflux tag does not yet exist, peakfreq also does not
     fit=add_tag(fit,0.0,'peakflux')
     fit=add_tag(fit,0.0,'peakfreq')
     fit=add_tag(fit,0.0,'errpeakflux')
@@ -39,7 +39,9 @@ function gsfit_log2map,fitxfile,full_size=full_size,header=header,_extra=_extra
     fit.y=fit.y-yrange[0]
     sub_map,header.refmap,template_map,xrange=xrange,yrange=yrange,/pixel
   endif else template_map=header.refmap
-
+  
+  template_map=rep_tag_name(template_map,'dataunit','dataunits')
+  
   template_map.data[*,*]=0
   errmap = (datamap =(fitmap = replicate(template_map,Nfreq,Ntime)))
   maps = {fitmaps: reform(temporary(fitmap),nfreq,ntime), datamaps: reform(temporary(datamap),nfreq,ntime), errmaps: reform(temporary(errmap),nfreq,ntime)}

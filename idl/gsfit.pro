@@ -899,17 +899,7 @@ pro gsfit_event,event
    state.wopen: begin
                  file=dialog_pickfile(filter='*.sav',title='Select an IDL sav file containg n EOVSA map cube structure',/read)
                  if file ne '' then begin
-                  osav=obj_new('idl_savefile',file)
-                   names=osav->names()
-                   valid=0
-                   for i=0,n_elements(names)-1 do begin
-                     osav->restore,names[i]
-                     e=execute('result=size('+names[i]+',/tname)')
-                     if (result eq 'STRUCT') then begin
-                       e=execute('maps=temporary('+names[i]+')')
-                     endif
-                   endfor
-                   obj_destroy,osav
+                  gsfit_readtb,file,maps
                   if valid_map(maps) then begin
                       data=maps.data
                       sz=size(data)
@@ -927,13 +917,13 @@ pro gsfit_event,event
                       dy=(maps.dy)[0]
                       freq=reform(maps[*,0].freq)
                       time=reform(maps[0,*].time)
-                      arcsec2cm=7.27d7;gx_rsun()/(pb0r((maps)[0].time)*60)[2]
-                      coeff= 1.4568525d026/((dx*dy)*(arcsec2cm)^2)/freq^2
-                      coeff_arr = reform(replicate(1,sz[1]*sz[2])#coeff,sz[1],sz[2],sz[3])
-                      for i=0,sz[4]-1 do begin
-                        maps[*,i].data=(maps[*,i].data/coeff_arr)>0
-                        maps[*,i].rms*=1/coeff
-                      end
+;                      arcsec2cm=7.27d7;gx_rsun()/(pb0r((maps)[0].time)*60)[2]
+;                      coeff= 1.4568525d026/((dx*dy)*(arcsec2cm)^2)/freq^2
+;                      coeff_arr = reform(replicate(1,sz[1]*sz[2])#coeff,sz[1],sz[2],sz[3])
+;                      for i=0,sz[4]-1 do begin
+;                        maps[*,i].data=(maps[*,i].data/coeff_arr)>0
+;                        maps[*,i].rms*=1/coeff
+;                      end
                       ptr_free,state.pmaps
                       state.pmaps=ptr_new(temporary(maps))     
                       header=state.header
