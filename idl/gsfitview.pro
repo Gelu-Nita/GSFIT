@@ -456,13 +456,13 @@ pro gsfitview_event,event
                           state.proi_on=event.select
                           widget_control,event.id,set_value=gx_bitmap(filepath(event.select?'segpoly_active.bmp':'segpoly.bmp', subdirectory=subdirectory))
                        end     
-   state.wRefROI: begin
-                   widget_control,event.id,get_uvalue=roi
-                   state.wHist.xroi->Remove,/all
-                   state.wHist.yroi->Remove,/all
-                   state.wHist.xroi->add,roi.x,/extract
-                   state.wHist.yroi->add,roi.y,/extract
-                   draw=1
+   state.wRefROI: begin             
+                     widget_control,event.id,get_uvalue=roi     
+                     state.wHist.xroi->Remove,/all
+                     state.wHist.yroi->Remove,/all
+                     state.wHist.xroi->add,roi.x,/extract
+                     state.wHist.yroi->add,roi.y,/extract
+                     draw=1
                   end                                                                           
    
    state.wPNG:gsfitview2png,state
@@ -523,7 +523,9 @@ pro gsfitview_display_statistics,state,save=save
   widget_control,state.wx,get_uvalue=xpix
   widget_control,state.wy,get_uvalue=ypix
   widget_control,state.wHist.check,get_value=check
-  ij=polyfillv((state.whist.xroi->ToArray()-xpix[0])/(xpix[1]-xpix[0]),(state.whist.yroi->ToArray()-ypix[0])/(ypix[1]-ypix[0]),state.nx,state.ny)
+  xroi=state.whist.xroi.ToArray()
+  yroi=state.whist.yroi.ToArray()
+  ij=polyfillv((xroi-xpix[0])/(xpix[1]-xpix[0]),(yroi-ypix[0])/(ypix[1]-ypix[0]),state.nx,state.ny)
   if check[0] eq 1 then begin
     data=bytarr(state.nx,state.ny)
     data[ij]=1
@@ -537,7 +539,7 @@ pro gsfitview_display_statistics,state,save=save
  
  for i=0,state.ntimes-1 do begin
    parmap=((*state.pmaps).(parm_index))[i]
-   parm=double(parmap.data)
+   parm=double(parmap.data)  
    parm=parm[ij]
    if errparm_index[0] ge 0 then begin
      errparmap=((*state.pmaps).(errparm_index))[i]
@@ -651,8 +653,8 @@ pro gsfitview_display_statistics,state,save=save
       if over2d then begin
         outplot,time,lc,thick=1,psym=2
         uterrplot,time,lc-errlc,lc+errlc,thick=1
-        outplot,time[[time_idx,time_idx]],logbins?10^!y.crange:!y.crange,linesty=2,color=250,thick=3
       end
+      outplot,time[[time_idx,time_idx]],logbins?10^!y.crange:!y.crange,linesty=2,color=250,thick=3
     endelse
    endif else begin
       utplot,time,lc,thick=1,psym=2,/xsty,charsize=charsize,charthick=charthick,ylog=loghist,ytitle=xtitle,title=title,yrange=range
@@ -744,7 +746,9 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   oplot,xpix[[i,i]],!y.crange,linesty=2,color=250,thick=3
   oplot,!x.crange,ypix[[j,j]],linesty=2,color=250,thick=3
   widget_control,state.wHist.check,get_value=check
-  if ~state.wHist.xroi.IsEmpty() then plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=250,thick=3
+  if ~state.wHist.xroi.IsEmpty() then begin
+    plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=250,thick=3
+  endif
   g={x:!x,y:!y,z:!z,p:!p}
   widget_control,state.wdatamap,set_uvalue=g
   widget_control,state.wparmap,set_uvalue=g
@@ -774,15 +778,15 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   if ~state.wHist.xroi.IsEmpty() then plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=250,thick=3
   
   if keyword_set(showrefmap) then begin
-      get_map_coord,frontmap,xp,yp
-      contour,frontmap.data,xp,yp,levels=level*max(frontmap.data)/100,path_xy=xy,path_info=info,/PATH_DATA_COORDS
-      m=max(info.n,k)
-      FOR k = 0, (N_ELEMENTS(info) - 1 ) DO BEGIN 
-        S = [INDGEN(info(k).N), 0]
-        xroi=(k eq 0)? reform(xy[0,INFO(k).OFFSET + S ]):[xroi,reform(xy[0,INFO(k).OFFSET + S ])]
-        yroi=(k eq 0)? reform(xy[1,INFO(k).OFFSET + S ]):[yroi,reform(xy[1,INFO(k).OFFSET + S ])]
-      end  
-       widget_control,state.wRefROI,set_uvalue={x:xroi,y:yroi}
+        get_map_coord,frontmap,xp,yp
+        contour,frontmap.data,xp,yp,levels=level*max(frontmap.data)/100,path_xy=xy,path_info=info,/PATH_DATA_COORDS
+        m=max(info.n,k)
+        FOR k = 0, (N_ELEMENTS(info) - 1 ) DO BEGIN 
+          S = [INDGEN(info(k).N), 0]
+          xroi=(k eq 0)? reform(xy[0,INFO(k).OFFSET + S ]):[xroi,reform(xy[0,INFO(k).OFFSET + S ])]
+          yroi=(k eq 0)? reform(xy[1,INFO(k).OFFSET + S ]):[yroi,reform(xy[1,INFO(k).OFFSET + S ])]
+        end  
+        widget_control,state.wRefROI,set_uvalue={x:xroi,y:yroi}   
   endif else  widget_control,state.wRefROI,set_uvalue={x:displaymap.xc,y:displaymap.yc}  
   
   if draw eq 1 then begin

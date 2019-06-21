@@ -296,7 +296,11 @@ pro gsfit_draw,state,draw
       displaymap.data*=mask
     end
     plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,charsize=charsize,xrange=state.ppd_data_xrange,yrange=state.ppd_data_yrange
-    if ~state.xroi.IsEmpty() then plots,state.xroi.ToArray(),state.yroi.ToArray(),color=255
+    if ~state.xroi.IsEmpty() then begin 
+      xroi=state.xroi.ToArray()
+      yroi=state.yroi.ToArray()
+      plots,xroi,yroi,color=255
+    endif
     g={x:!x,y:!y,z:!z,p:!p}
     widget_control,state.wdatamap,set_uvalue=g   
     oplot,xpix[[i,i]],!y.crange,linesty=2,color=250
@@ -1010,9 +1014,11 @@ pro gsfit_event,event
                 maxfreq=widget_info(state.wMaxFreq,/droplist_select)
                 
                 if state.xroi.Count() gt 1 then begin
+                  xroi=state.xroi.ToArray()
+                  yroi=state.yroi.ToArray()
                   widget_control,state.wx,get_uvalue=xpix
                   widget_control,state.wy,get_uvalue=ypix
-                  idx=polyfillv(floor((state.xroi->ToArray()-xpix[0])/(xpix[1]-xpix[0])),floor((state.yroi->ToArray()-ypix[0])/(ypix[1]-ypix[0])),nx,ny)
+                  idx=polyfillv(floor((xroi-xpix[0])/(xpix[1]-xpix[0])),floor((yroi-ypix[0])/(ypix[1]-ypix[0])),nx,ny)
                   ij=array_indices([nx,ny],idx,/dim)
                   xrange=minmax(ij[0,*])
                   yrange=minmax(ij[1,*])

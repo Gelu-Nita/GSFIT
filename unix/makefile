@@ -1,37 +1,22 @@
-FC = gfortran # fortran compiler
-
-TARGET_LIB = fit_Spectrum_Kl.so # target lib
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Linux)
-	FFLAGS = -ffixed-line-length-0 -march=native -O3 -fPIC # F flags
-endif
-ifeq ($(UNAME_S),Darwin)
-	FFLAGS = -ffixed-line-length-0 -march=native -O3 -fPIC -static-libgfortran # F flags
-endif
-
-objects1 = Calc_GS_Spec_hom.o angular.o spidrsub.o FitFun.o ResolvedSpectrum.o klein.o
-objects2 = fit_Spectrum_Kl.o
-
-$(TARGET_LIB): $(objects2) $(objects1)
-	$(FC) -shared $(FFLAGS) -o $(TARGET_LIB) $(objects2) $(objects1)
-
-$(objects2): fit_Spectrum_Kl.for
-	$(FC) -o $(objects2) $(FFLAGS) -c fit_Spectrum_Kl.for
-
-Calc_GS_Spec_hom.o : 
-	$(FC) -c $(FFLAGS) Calc_GS_Spec_hom.for
-angular.o : 
-	$(FC) -c $(FFLAGS) angular.for
-spidrsub.o : 
-	$(FC) -c $(FFLAGS) spidrsub.for
-FitFun.o : 
-	$(FC) -c $(FFLAGS) FitFun.for
-ResolvedSpectrum.o : 
-	$(FC) -c $(FFLAGS) ResolvedSpectrum.for
-klein.o : 
-	$(FC) -c $(FFLAGS) klein.f
-
-.PHONY : clean
-clean :
-	-rm -f $(objects1) $(objects2)
-	echo Clean done
+Faraday		:	Astrophys.o DiffEq.o ExtMath.o getparms.o GS.o IDLInterface.o Messages.o MWMain.o Std_DF.o Transfer.o
+			g++ -shared -o MWTransfer.so Astrophys.o DiffEq.o ExtMath.o getparms.o GS.o IDLInterface.o Messages.o MWMain.o Std_DF.o Transfer.o
+Astrophys.o	:	Astrophys.cpp Astrophys.h DF.h DiffEq.h ExtMath.h GS.h IDLInterface.h Messages.h MWMain.h Std_DF.h Transfer.h
+			g++ -c -O3 -fPIC Astrophys.cpp
+DiffEq.o	:	DiffEq.cpp Astrophys.h DF.h DiffEq.h ExtMath.h GS.h IDLInterface.h Messages.h MWMain.h Std_DF.h Transfer.h
+			g++ -c -O3 -fPIC DiffEq.cpp
+ExtMath.o	:	ExtMath.cpp Astrophys.h DF.h DiffEq.h ExtMath.h GS.h IDLInterface.h Messages.h MWMain.h Std_DF.h Transfer.h
+			g++ -c -O3 -fPIC ExtMath.cpp
+getparms.o	:	getparms.cpp Astrophys.h DF.h DiffEq.h ExtMath.h GS.h IDLInterface.h Messages.h MWMain.h Std_DF.h Transfer.h
+			g++ -c -O3 -fPIC getparms.cpp
+GS.o		:	GS.cpp Astrophys.h DF.h DiffEq.h ExtMath.h GS.h IDLInterface.h Messages.h MWMain.h Std_DF.h Transfer.h
+			g++ -c -O3 -fPIC GS.cpp
+IDLInterface.o	:	IDLInterface.cpp Astrophys.h DF.h DiffEq.h ExtMath.h GS.h IDLInterface.h Messages.h MWMain.h Std_DF.h Transfer.h
+			g++ -c -O3 -fPIC IDLInterface.cpp
+Messages.o	:	Messages.cpp Astrophys.h DF.h DiffEq.h ExtMath.h GS.h IDLInterface.h Messages.h MWMain.h Std_DF.h Transfer.h
+			g++ -c -O3 -fPIC Messages.cpp
+MWMain.o	:	MWMain.cpp Astrophys.h DF.h DiffEq.h ExtMath.h GS.h IDLInterface.h Messages.h MWMain.h Std_DF.h Transfer.h
+			g++ -c -O3 -fPIC MWMain.cpp
+Std_DF.o	:	Std_DF.cpp Astrophys.h DF.h DiffEq.h ExtMath.h GS.h IDLInterface.h Messages.h MWMain.h Std_DF.h Transfer.h
+			g++ -c -O3 -fPIC Std_DF.cpp
+Transfer.o	:	Transfer.cpp Astrophys.h DF.h DiffEq.h ExtMath.h GS.h IDLInterface.h Messages.h MWMain.h Std_DF.h Transfer.h
+			g++ -c -O3 -fPIC Transfer.cpp
