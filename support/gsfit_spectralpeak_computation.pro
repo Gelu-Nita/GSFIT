@@ -14,16 +14,16 @@ if ~tag_exist(maps,'peakfreq') then begin
   nt=sz[3]
   dummy_map=maps.b
   dummy_map.data[*]=0
-  maps=add_tag(maps,dummy_map,'peakflux')
+  maps=rep_tag_value(maps,dummy_map,'peakflux')
   maps.peakflux.id[*]='peakflux'
   maps.peakflux.dataunits[*]='sfu'
-  maps=add_tag(maps,dummy_map,'peakfreq')
+  maps=rep_tag_value(maps,dummy_map,'peakfreq')
   maps.peakfreq.id[*]='peakfreq'
   maps.peakflux.dataunits[*]='GHz'
-  maps=add_tag(maps,dummy_map,'errpeakflux')
+  maps=rep_tag_value(maps,dummy_map,'errpeakflux')
   maps.errpeakflux.id[*]='errpeakflux'
   maps.errpeakflux.dataunits[*]='sfu'
-  maps=add_tag(maps,dummy_map,'errpeakfreq')
+  maps=rep_tag_value(maps,dummy_map,'errpeakfreq')
   maps.errpeakfreq.id[*]='errpeakfreq'
   maps.errpeakfreq.dataunits[*]='sfu'
   if ~tag_exist(maps.header,'peakflux') then begin
