@@ -550,9 +550,8 @@ pro gsfitview_display_statistics,state,save=save
    endelse
    widget_control,state.wTimeProfileOptions,get_value=objTimePlotOptions
    objTimePlotOptions->GetProperty,yrange=pyrange
-   ;if n_elements(pyrange) eq 0 then $
-   good=where((parm gt 0) and (finite(parm) eq 1),count ) ;else $
-   ;good=where((parm ge pyrange[0]) and (parm le pyrange[1]),count )
+   ;good=where((parm gt 0) and (finite(parm) eq 1),count ) 
+   good=where((parm ge range[0]) and (parm le range[1]) and (finite(parm) eq 1),count )
    if count gt 0 then begin
     parm=parm[good]
     errparm=errparm[good]
@@ -570,7 +569,7 @@ pro gsfitview_display_statistics,state,save=save
     weighted_mean_sum_err[i]= weighted_mean_err[i]*count
     
     med[i]=median(parm)
-    med_err[i]=1.253*weighted_mean_err[i]
+    med_err[i]=median(abs(parm-median(parm)))
     
     med_sum[i]= med[i]*count
     med_sum_err[i]= med_err[i]*count

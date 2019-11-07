@@ -326,8 +326,8 @@ pro gsfit_draw,state,draw
     if fixed[0] then widget_control,state.wspectrum.range,get_value=yrange
     widget_control,state.wFastCode,get_value=fastcode_over
           
-    if total_flux gt 0 then begin
-      plot,freq,spectrum,/xlog,/ylog,/xsty,/ysty,psym=2,xrange=[1,20],yrange=yrange,$
+    if total_flux gt 0 then begin ;xrange=[1,20]
+      plot,freq,spectrum,/xlog,/ylog,/xsty,/ysty,psym=2,xrange=xrange,yrange=yrange,$
         xtitle='Frequency (GHz)',ytitle='Flux [sfu]',title=string(i,j,format="('Flux [',i3,',',i3,']')"),ymargin=[6,6],charsize=charsize
       oploterr, freq, spectrum, err_spectrum, psym=3, hatlength=2, errcolor=255
       oplot,freq[[freq_idx,freq_idx]],10^!y.crange,linesty=2,color=250
