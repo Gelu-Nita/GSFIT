@@ -899,12 +899,20 @@ pro gsfit_event,event
    state.wpalette: begin
                      xloadct,/silent,/block
                      draw=1
-                   end    
+                   end  
+   state.wimport: begin
+                   maps=gsfit_readfits(files,flux_threshold=flux_threshold,rms_mask=rms_mask,/tb)
+                   if valid_map(maps) then begin
+                    break_file, files[0], disk_log, file
+                    goto, validmaps
+                   endif
+                  end                 
    state.wopen: begin
-                 file=dialog_pickfile(filter='*.sav',title='Select an IDL sav file containg n EOVSA map cube structure',/read)
+                 file=dialog_pickfile(filter='*.sav',title='Select an IDL sav file containg an EOVSA map cube structure',/read)
                  if file ne '' then begin
                   gsfit_readtb,file,maps
                   if valid_map(maps) then begin
+                      validmaps:
                       data=maps.data
                       sz=size(data)
                       if sz[0] eq 3 then begin
@@ -1516,6 +1524,8 @@ pro gsfit,nthreads
   x_scroll_size=3*xsize*1.06,y_scroll_size=ysize,/scroll)
   state_base=widget_base(main_base, /column,UNAME='STATEBASE')
   wToolbarBase=widget_base(state_base, /row,/frame,UNAME='TOOLBAR',/toolbar)
+  wImport= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('importf.bmp', subdirectory=subdirectory)),$
+    /bitmap,tooltip='Import EOVSA Fits Dataset')
   wOpen= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('open.bmp', subdirectory=subdirectory)),$
     /bitmap,tooltip='Upload EOVSA Map Cube')
   wPalette = widget_button( wToolbarBase, $
@@ -1681,6 +1691,7 @@ pro gsfit,nthreads
     wtime:wtime,$
     wpixmap:wpixmap,$
     wOpen:wOpen,$
+    wImport:wImport,$
     wFitOne:wFitOne,$
     wFitRange:wFitRange,$
     wRestoreFitList:wRestoreFitList,$
