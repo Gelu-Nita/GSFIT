@@ -1,4 +1,5 @@
-function gsfit_readfits,files,flux_threshold=flux_threshold,rms_mask=rms_mask,tb=tb
+function gsfit_readfits,files,flux_threshold=flux_threshold,rms_mask=rms_mask,sfu=sfu
+ ;this function can be used to import a sequence of EOVSA fits files and convert them to a map cube either in Tb or sfu units
  ;set flux_thresholds to a value representing an user define minimum integrated flux over all bands for a given pixel intensity not to be considered noise
  default,flux_threshold,1
  ;provide an rms_mask as a nx*ny bit mask to indicate the pixels that should be included in RMS computation.
@@ -38,8 +39,8 @@ function gsfit_readfits,files,flux_threshold=flux_threshold,rms_mask=rms_mask,tb
     endfor
    endfor
  end
- ;use /tb to convert maps from Tb to flux on the fly
- if keyword_set(tb) then begin
+ ;use /sfu to convert maps from Tb to flux on the fly
+ if keyword_set(sfu) then begin
     sz=size(maps.data)
     dx=(maps.dx)[0]
     dy=(maps.dy)[0]

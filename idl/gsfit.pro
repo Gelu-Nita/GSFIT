@@ -901,7 +901,8 @@ pro gsfit_event,event
                      draw=1
                    end  
    state.wimport: begin
-                   maps=gsfit_readfits(files,flux_threshold=flux_threshold,rms_mask=rms_mask,/tb)
+                   ;added capability to directly import a sequence of EOVSA fits files
+                   maps=gsfit_readfits(files,flux_threshold=flux_threshold,rms_mask=rms_mask,/sfu)
                    if valid_map(maps) then begin
                     break_file, files[0], disk_log, file
                     goto, validmaps
