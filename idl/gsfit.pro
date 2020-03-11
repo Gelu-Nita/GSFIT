@@ -271,12 +271,13 @@ pro gsfit_draw,state,draw
 
 
   geometry=widget_info(state.wDataMap,/geometry)
-  sz=size((*state.pmaps).data)
+
 
   widget_control,state.wdatamap,get_value=wdatamap
   widget_control,state.wspectrum.plot,get_value=wspectrum
   widget_control,state.wtime,get_value=time_idx
   widget_control,state.wfreq,get_value=freq_idx
+  pol_idx=widget_info(state.wpol,/droplist_select)
   widget_control,state.wx,get_value=i,get_uvalue=xpix
   widget_control,state.wy,get_value=j,get_uvalue=ypix
 
@@ -289,10 +290,33 @@ pro gsfit_draw,state,draw
   if (draw ne 0) then begin
     ;wset,state.wPixMap
     wset,wdatamap
-    displaymap=(*state.pmaps)[freq_idx,time_idx]
+    sz=size((*state.pmaps))
+    npol=sz[2]
+    if npol eq 2 then begin
+      if pol_idx eq 0 then begin
+        displaymap=(*state.pmaps)[freq_idx, 0,time_idx]
+        splitid=strsplit(displaymap.id,/extract)
+        id=splitid[0]+' '+((*state.pmaps)[0, 0,time_idx]).stokes+'+'+((*state.pmaps)[0, 1,time_idx]).stokes
+        if n_elements(splitid) gt 2 then id=strjoin([id,' ',splitid[2:*]])
+        displaymap.id=id
+        spectrum=((*state.pmaps)[*, 0,time_idx]).data>0+((*state.pmaps)[*, 1,time_idx]).data>0
+        err=((*state.pmaps).rms)[*, 0,time_idx]>0+((*state.pmaps).rms)[*, 1,time_idx]>0
+      endif else begin
+        displaymap=(*state.pmaps)[freq_idx, pol_idx-1,time_idx]
+        spectrum=((*state.pmaps)[*, pol_idx -1,time_idx]).data>0
+        err=((*state.pmaps).rms)[*, pol_idx-1,time_idx]>0
+      endelse
+    endif else begin
+      displaymap=(*state.pmaps)[freq_idx, pol_idx,time_idx]
+      spectrum=((*state.pmaps)[*, pol_idx ,time_idx]).data>0
+      err=((*state.pmaps).rms)[*, pol_idx ,time_idx]>0
+    endelse
+      
+      
+      
     widget_control,state.wspectrum.threshold,get_value=apply_threshold
     if apply_threshold[0] then begin
-      mask = total((*state.pmaps)[*,time_idx].data,/nan,3) gt (state.header.info.rparms.value)[2]
+      mask = total((*state.pmaps)[*, pol_idx ,time_idx].data,/nan,3) gt (state.header.info.rparms.value)[2]
       displaymap.data*=mask
     end
     plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,charsize=charsize,xrange=state.ppd_data_xrange,yrange=state.ppd_data_yrange
@@ -311,11 +335,10 @@ pro gsfit_draw,state,draw
 
     wset,wspectrum
     erase,0
-    spectrum=((*state.pmaps)[*,time_idx]).data>0
+
     widget_control,state.wx,get_value=i
     widget_control,state.wy,get_value=j
     spectrum=reform(spectrum[i,j,*])
-    err=((*state.pmaps).rms)[*,time_idx]
     rmsweight=state.header.info.rms
     err_spectrum=(err+rmsweight*max(err)/freq)
     
@@ -326,7 +349,7 @@ pro gsfit_draw,state,draw
     if fixed[0] then widget_control,state.wspectrum.range,get_value=yrange
     widget_control,state.wFastCode,get_value=fastcode_over
           
-    if total_flux gt 0 then begin ;xrange=[1,20]
+    if total_flux gt 0 then begin 
       plot,freq,spectrum,/xlog,/ylog,/xsty,/ysty,psym=2,xrange=xrange,yrange=yrange,$
         xtitle='Frequency (GHz)',ytitle='Flux [sfu]',title=string(i,j,format="('Flux [',i3,',',i3,']')"),ymargin=[6,6],charsize=charsize
       oploterr, freq, spectrum, err_spectrum, psym=3, hatlength=2, errcolor=255
@@ -339,7 +362,7 @@ pro gsfit_draw,state,draw
         parms=reform(state.header.info.fastcode.parms.value, npix,nvox, n_elements(state.header.info.fastcode.parms.value))
         res=execute(state.header.info.fastcode.execute)
         guess_freq=reform(datain[0,*])
-        guess_flux=reform(rowdata[*,*,0,0]+rowdata[*,*,1,0])
+        guess_flux=pol_idx eq 0?reform(rowdata[*,*,0,0]+rowdata[*,*,1,0]):reform(rowdata[*,*,pol_idx-1,0])
         oplot,guess_freq,guess_flux,color=100
         fmin=widget_info(state.wMinFreq,/droplist_select)
         fmax=widget_info(state.wMaxFreq,/droplist_select)
@@ -359,10 +382,16 @@ pro gsfit_draw,state,draw
       filter=(l.Filter(Lambda(l,x,y,t:l.x eq x and l.y eq y and l.t eq t),i,j,time_idx))
       match=l.where(filter.toarray(),count=count)
       widget_control,state.wfitpix,set_value=count gt 0?match[0]+1:0
+      color=[150,50,200]
       if count gt 0 then begin
         idx=match[0]
         fit=state.fit(idx)
-        oplot,freq[fit.fmin:fit.fmax],fit.specfit[fit.fmin:fit.fmax],color=150,thick=2
+        if npol eq 2 then begin
+          if pol_idx ne 0 then begin
+            specfit=fit.specfit[fit.fmin:fit.fmax,pol_idx-1]
+          endif else specfit=total(fit.specfit[fit.fmin:fit.fmax,*],2)
+        endif else specfit=fit.specfit[fit.fmin:fit.fmax]
+        oplot,freq[fit.fmin:fit.fmax],specfit,color=color[pol_idx],thick=2
          
         if fastcode_over[0] eq 2 then begin 
             parms=state.header.info.fastcode.parms.value
@@ -386,10 +415,12 @@ pro gsfit_draw,state,draw
             rowdata=make_array([npix,state.header.info.fastcode.pixdim],/float)
             res=execute(state.header.info.fastcode.execute)
             fast_freq=reform(datain[0,*])
-            fast_flux=reform(rowdata[*,*,0,0]+rowdata[*,*,1,0])
+            fast_flux=pol_idx eq 0?reform(rowdata[*,*,0,0]+rowdata[*,*,1,0]):reform(rowdata[*,*,pol_idx-1,0])
             oplot,fast_freq,fast_flux,color=250,thick=2
             fit_flux=spline(fast_freq,fast_flux,freq)
-            CHISQR=total(((spectrum-fit.specfit)/err_spectrum)^2,/double)/(2*n_elements(freq)-(state.header.info.nparms.value)[0])
+            nfreq=n_elements(freq)
+            specfit_flux=(pol_idx eq 0) ? total(reform(fit.specfit,nfreq,npol),2):fit.specfit[*,pol_idx-1]
+            CHISQR=total(((spectrum-specfit_flux)/err_spectrum)^2,/double)/(2*n_elements(freq)-(state.header.info.nparms.value)[0])
             fcCHISQR=total(((spectrum-fit_flux)/err_spectrum)^2,/double)/(2*n_elements(freq)-(state.header.info.nparms.value)[0])
             gx_plot_label,0.01,0.9,string(fcCHISQR,format="('Fast Code  CHISQR=',g0)"),/ylog,/xlog,color=250,charsize=1.2*charsize,charthick=2
             gx_plot_label,0.01,0.8,string(CHISQR,format="('Fit  CHISQR=',g0)"),/ylog,/xlog,color=150,charsize=1.2*charsize,charthick=2
@@ -509,7 +540,7 @@ pro gsfit_readframe, bridge,state,task
   xy=array_indices(data_size[1:2],task.idx,/dim)
   x=xy[0,*]
   y=xy[1,*]
-  data_spectrum=(errdata_spectrum=(fit_spectrum=fltarr(n_elements(state.header.freq))))
+  data_spectrum=(errdata_spectrum=(fit_spectrum=fltarr(n_elements(state.header.freq),n_elements(state.header.pol)<2)))
   sz=size(aparms)
   npix=sz[1]
   nparms=sz[2]
@@ -524,9 +555,15 @@ pro gsfit_readframe, bridge,state,task
       data_spectrum[*]=0
       errdata_spectrum[*]=0
       fit_spectrum[*]=0
-      data_spectrum[task.fmin:task.fmax]=spec_in[j,*,0]+spec_in[j,*,1]
-      errdata_spectrum[task.fmin:task.fmax]=spec_in[j,*,2]+spec_in[j,*,3]
-      fit_spectrum[task.fmin:task.fmax]=spec_out[j,*,0]+spec_out[j,*,1]
+      if n_elements(state.header.pol) ne 1 then begin
+        data_spectrum[task.fmin:task.fmax,*]=spec_in[j,*,0:1]
+        errdata_spectrum[task.fmin:task.fmax,*]=spec_in[j,*,2:3]
+        fit_spectrum[task.fmin:task.fmax,*]=spec_out[j,*,0:1]
+      endif else begin
+        data_spectrum[task.fmin:task.fmax]=spec_in[j,*,0]+spec_in[j,*,1]
+        errdata_spectrum[task.fmin:task.fmax]=spec_in[j,*,2]+spec_in[j,*,3]
+        fit_spectrum[task.fmin:task.fmax]=spec_out[j,*,0]+spec_out[j,*,1]
+      endelse
       afit={x:x[j],y:y[j],t:time_idx,fmin:fix(task.fmin),fmax:fix(task.fmax),data:data_spectrum,errdata:errdata_spectrum, specfit:fit_spectrum}
       for k=0,nparms-1 do begin
         afit=create_struct(afit,state.header.parnames[k],aparms[j,k],state.header.errparnames[k],eparms[j,k])
@@ -544,6 +581,7 @@ pro gsfit_sendfittask,bridge,state,task
   npix=n_elements(task.idx)
   freq=double(state.header.freq[task.fmin:task.fmax])
   nfreq=n_elements(freq)
+  npol=n_elements(state.header.pol)
   dx=((*state.pmaps).dx)[0]
   dy=((*state.pmaps).dy)[0]
 
@@ -555,6 +593,7 @@ pro gsfit_sendfittask,bridge,state,task
   
   widget_control,state.lib.wNinput,get_value=ninput
   ninput[2:3]=[npix,nfreq]
+  ninput[5]=(npol eq 1)?1:2
   widget_control,state.lib.wNinput,set_value=ninput
   widget_control,state.lib.wRinput,get_value=rinput
   rinput[3]=dx*dy
@@ -566,16 +605,24 @@ pro gsfit_sendfittask,bridge,state,task
   ParGuess=[[temporary(GuessParms)],[temporary(MinParms)],[temporary(MaxParms)]]
   aparms=(eparms=dblarr(npix, n_elements(state.header.info.parms_out)))
 
-  ;Assume only I STOKES for now
-  flux_roi=reform((*state.pmaps)[task.fmin:task.fmax,task.t].data[ij[0,*],ij[1,*]],npix,nfreq)
-  err=((*state.pmaps).rms)[task.fmin:task.fmax,time_idx]
-  FOR i = 0, npix-1 DO BEGIN
-    spec_in[i,*,0]=flux_roi[i,*]>0; only I STOKES fluxes
-    spec_in[i,*,2]=err+rmsweight*max(err)/freq; only I STOKES errors
-    ;the second term attempts to account for the frequency-dependent spatial resolution
-  ENDFOR
-;  spec_in[*,*,1]=spec_in[*,*,0];fluxes
-;  spec_in[*,*,3]=spec_in[*,*,2];errors
+
+  flux_roi=reform((*state.pmaps)[task.fmin:task.fmax,*,task.t].data[ij[0,*],ij[1,*]],npix,nfreq,npol)
+  err=reform(((*state.pmaps).rms)[task.fmin:task.fmax,*,task.t],nfreq,npol)
+  if npol eq 1 then begin
+    FOR i = 0, npix-1 DO BEGIN
+      spec_in[i,*,0]=flux_roi[i,*,0]>0; only I STOKES fluxes
+      spec_in[i,*,2]=err[*,0]+rmsweight*max(err)/freq; only I STOKES errors
+      ;the second term attempts to account for the frequency-dependent spatial resolution
+    ENDFOR
+  endif else begin
+    FOR i = 0, npix-1 DO BEGIN
+      spec_in[i,*,0]=flux_roi[i,*,0]>0; only I STOKES fluxes
+      spec_in[i,*,2]=err[*,0]+rmsweight*max(err[*,0])/freq; only I STOKES errors
+      spec_in[i,*,1]=flux_roi[i,*,1]>0; only I STOKES fluxes
+      spec_in[i,*,3]=err[*,1]+rmsweight*max(err[*,1])/freq; only I STOKES errors
+    ENDFOR  
+  endelse
+
   
 
   ;===========End array definition============================================================
@@ -890,6 +937,7 @@ pro gsfit_event,event
                 widget_control,state.wfreqlabel,set_value=freq+strcompress(string(event.value,format="('[',i3,']')"),/rem)
                 draw=1
               end
+   state.wpol:draw=1
    state.wx:begin 
              draw=1
             end 
@@ -909,49 +957,64 @@ pro gsfit_event,event
                    endif
                   end                 
    state.wopen: begin
+                 widget_control,state.wsavefitlist,get_uvalue=fits2save
+                 if fits2save then begin
+                   answ=dialog_message('The current fit list has unsaved changes, do you want to save the list before deleting it from memory?',/question)
+                   case strupcase(answ) of
+                     'YES': begin
+                       file=dialog_pickfile(filter='*.sav',title='Select a filename to save the current fit list',/write,/overwrite)
+                       if file ne '' then begin
+                         fit=state.fit.toarray()
+                         multi_save,lun,fit,file=file,header=state.header,/new,/close
+                         widget_control,state.wsavefitlist,set_uvalue=0
+                       endif
+                     end
+                     'NO': widget_control,state.wsavefitlist,set_uvalue=0
+                     else:
+                   endcase
+                 endif
+                 widget_control,state.wsavefitlist,get_uvalue=fits2save
+                 state.fittasks->Remove,/all
+                 state.fit->Remove,/all
+                 gsfit_update_queue,state
+                 widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit),set_value=n_elements(state.fit)
+                 widget_control,state.wfitpix,send_event={id:0l,top:0l,handler:0l,value:n_elements(state.fit),drag:0}
                  file=dialog_pickfile(filter='*.sav',title='Select an IDL sav file containg an EOVSA map cube structure',/read)
                  if file ne '' then begin
                   gsfit_readtb,file,maps
                   if valid_map(maps) then begin
                       validmaps:
-                      data=maps.data
-                      sz=size(data)
-                      if sz[0] eq 3 then begin
-                        data=reform(data,sz[1],sz[2],sz[3],1)
-                        sz=size(data)
-                      endif
+                      sz=size(maps.data)
                       nx=sz[1]
                       ny=sz[2]
-                      nfreq=sz[3]
+                      sz=size(maps)
+                      nfreq=sz[1]
                       maxfreq=nfreq-1
-                      ntimes=sz[4]
+                      npol=sz[2]
+                      maxpol=npol-1
+                      ntimes=sz[3]
                       maxtime=ntimes-1
                       dx=(maps.dx)[0]
                       dy=(maps.dy)[0]
-                      freq=reform(maps[*,0].freq)
-                      time=reform(maps[0,*].time)
-;                      arcsec2cm=7.27d7;gx_rsun()/(pb0r((maps)[0].time)*60)[2]
-;                      coeff= 1.4568525d026/((dx*dy)*(arcsec2cm)^2)/freq^2
-;                      coeff_arr = reform(replicate(1,sz[1]*sz[2])#coeff,sz[1],sz[2],sz[3])
-;                      for i=0,sz[4]-1 do begin
-;                        maps[*,i].data=(maps[*,i].data/coeff_arr)>0
-;                        maps[*,i].rms*=1/coeff
-;                      end
+                      freq=reform(maps[*,0,0].freq)
+                      pol=reform(maps[0,*,0].stokes)
+                      time=reform(maps[0,0,*].time)
                       ptr_free,state.pmaps
                       state.pmaps=ptr_new(temporary(maps))     
                       header=state.header
-                      header=rem_tag(header,['freq','time','refmap'])
+                      header=rem_tag(header,['freq','pol','time','refmap'])
                       header=add_tag(header,freq,'freq')
+                      header=add_tag(header,pol,'pol')
                       header=add_tag(header,time,'time')
                       header=add_tag(header,(*state.pmaps)[0,0],'refmap')
                       state=rem_tag(state,'header')
                       state=add_tag(state,header,'header')
                     
-                      xrange=get_map_xrange((*state.pmaps)[0,0])
+                      xrange=get_map_xrange((*state.pmaps)[0])
                       xpix=xrange[0]+findgen(nx)*dx
-                      yrange=get_map_yrange((*state.pmaps)[0,0])
+                      yrange=get_map_yrange((*state.pmaps)[0])
                       ypix=yrange[0]+findgen(ny)*dy
-                      yrange=get_map_xrange((*state.pmaps)[0,0])
+                      yrange=get_map_xrange((*state.pmaps)[0])
                       freq=state.header.freq
                       flabels=string(freq[0],format="(f5.2,' GHz')")
                       for i=1,n_elements(freq)-1 do begin
@@ -959,6 +1022,14 @@ pro gsfit_event,event
                       endfor
                       widget_control,state.wMinFreq,set_value=flabels
                       widget_control,state.wMaxFreq,set_value=flabels,SET_DROPLIST_SELECT=maxfreq
+                      
+                      stokes=reform((*state.pmaps)[0,*,0].stokes)
+                      widget_control,state.wpol,set_value=n_elements(stokes) eq 1 ?stokes:['I',stokes],sensitive=(n_elements(stokes) gt 1)
+                      widget_control,state.lib.wNinput,get_value=ninput
+                      ninput[3]=n_elements(freq)
+                      ninput[4]=n_elements(stokes)
+                      ninput[5]=n_elements(stokes)
+                      widget_control,state.lib.wNinput,set_value=ninput
                       
                       widget_control,state.wfreq, set_slider_max=maxfreq,set_value=0,sensitive=1
                       widget_control,state.wtime, set_slider_max=maxtime,set_value=0,sensitive=1
@@ -1012,7 +1083,9 @@ pro gsfit_event,event
                 sz=size((*state.pmaps).data)
                 nx=sz[1]
                 ny=sz[2]
-                nt=sz[4]
+                nf=sz[3]
+                np=sz[4]
+                nt=sz[5]
                 widget_control,state.wtime,get_value=t0
                 freq=state.header.freq
                 flabels=string(freq[0],format="(f5.2,' GHz')")
@@ -1324,6 +1397,9 @@ pro gsfit_event,event
                        end  
    state.lib.wninput:begin
                          widget_control,event.id,get_value=value
+                         if value[5] eq 1 then value[4]=1
+                         value[4]=value[4]>1<4
+                         widget_control,event.id,set_value=value
                          state.header.info.nparms.value=value
                          fastcode_update=1
                          draw=1
@@ -1605,15 +1681,20 @@ pro gsfit,nthreads
       column_labels=['time_idx','#pixels','status'],uname='Queue',$
       scr_ysize=xsize,scr_xsize=xsize,/resizeable_columns)
     widget_control,wQueue,table_ysize=0 
-    
-  
-  wfreqlabel=widget_label(left_panel,xsize=xsize,value='Frequency',font=!defaults.font,/align_center,uname='freqlabel')
-  wfreq=WIDGET_SLIDER(left_panel,xsize=xsize,max=maxfreq,uvalue='FREQ',font=!defaults.font,/suppress,uname='frequency',sensitive=0)
+  lleft_panel=widget_base(left_panel,/row)  
+ 
+  freq_base=widget_base(lleft_panel,/column)
+  wfreqlabel=widget_label(freq_base,xsize=0.9*xsize,value='Frequency',font=!defaults.font,/align_center,uname='freqlabel')
+  wfreq=WIDGET_SLIDER(freq_base,xsize=0.9*xsize,max=maxfreq,uvalue='FREQ',font=!defaults.font,/suppress,uname='frequency',sensitive=0)
   label=WIDGET_LABEL(left_panel,xsize=xsize,font=!defaults.font,value='')
+  stokes_base=widget_base(lleft_panel,/column)
+  wstokeslabel=widget_label(stokes_base,xsize=0.1*xsize,value='Stokes',font=!defaults.font,/align_center,uname='stokeslabel')
+  wpol=widget_droplist(stokes_base,xsize=0.1*xsize,value=['   '],sensitive=0)
   
-  wtimelabel=widget_label(right_panel,xsize=xsize,value='Time',font=!defaults.font,/align_center,uname='timelabel')
-  wtime=WIDGET_SLIDER(right_panel,xsize=xsize,uvalue='TIME',max=maxtime,font=!defaults.font,/suppress,uname='time',sensitive=0)
-  label=WIDGET_LABEL(right_panel,xsize=xsize,font=!defaults.font,value='')
+  rright_panel=widget_base(right_panel,/column)
+  wtimelabel=widget_label(rright_panel,xsize=xsize,value='Time',font=!defaults.font,/align_center,uname='timelabel')
+  wtime=WIDGET_SLIDER(rright_panel,xsize=xsize,uvalue='TIME',max=maxtime,font=!defaults.font,/suppress,uname='time',sensitive=0)
+  label=WIDGET_LABEL(rright_panel,xsize=xsize,font=!defaults.font,value='')
   
 
    
@@ -1687,6 +1768,7 @@ pro gsfit,nthreads
     wdatamap:wdatamap,$
     wspectrum:{plot:wspecplot,range:wyrange,fixed:wyrangefix,totalflux:wtotalflux,charsize:wcharsize,threshold:wapplythreshold},$
     wfreq:wfreq,$
+    wpol:wpol,$
     wx:wx,$
     wy:wy,$
     wtime:wtime,$

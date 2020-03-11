@@ -171,14 +171,15 @@ end
 pro gsfitcp_sendfittask,bridge,task
   common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
   if size(maps,/tname) ne 'STRUCT' then return
-  freqs=reform(maps[*,0].freq)
-  times=reform(maps[0,*].time)
+  freqs=reform(maps[*,0,0].freq)
+  times=reform(maps[0,0,*].time)
   time_idx=task.t
   data_size=size(maps.data)
   ij=array_indices(data_size[1:2],task.idx,/dim)
   npix=n_elements(task.idx)
   freq=double(freqs[task.fmin:task.fmax])
   nfreq=n_elements(freq)
+  npol=(size(maps))[2]
   dx=(maps.dx)[0]
   dy=(maps.dy)[0]
   ;===========Define arrays for fitting. First - model, second -EOVSA
@@ -196,17 +197,23 @@ pro gsfitcp_sendfittask,bridge,task
   ParGuess=[[cpinput.parms_in.guess],[cpinput.parms_in.min],[cpinput.parms_in.max]]
   aparms=(eparms=dblarr(npix, n_elements(cpinput.parms_out)))
   
-  flux_roi=reform(maps[task.fmin:task.fmax,task.t].data[ij[0,*],ij[1,*]],npix,nfreq)
-  err=(maps.rms)[task.fmin:task.fmax,time_idx]
-  FOR i = 0, npix-1 DO BEGIN
-    spec_in[i,*,0]=flux_roi[i,*]>0; only I STOKES fluxes
-    spec_in[i,*,2]=err+rmsweight*max(err)/freq; only I STOKES errors
-    ;the second term attempts to account for the frequency-dependent spatial resolution
-  ENDFOR
-;  spec_in[*,*,1]=spec_in[*,*,0];fluxes
-;  spec_in[*,*,3]=spec_in[*,*,2];errors
+  flux_roi=reform(maps[task.fmin:task.fmax,*,task.t].data[ij[0,*],ij[1,*]],npix,nfreq,npol)
+  err=reform((maps.rms)[task.fmin:task.fmax,*,task.t],nfreq,npol)
 
-
+  if npol eq 1 then begin
+    FOR i = 0, npix-1 DO BEGIN
+      spec_in[i,*,0]=flux_roi[i,*,0]>0; only I STOKES fluxes
+      spec_in[i,*,2]=err[*,0]+rmsweight*max(err)/freq; only I STOKES errors
+      ;the second term attempts to account for the frequency-dependent spatial resolution
+    ENDFOR
+  endif else begin
+    FOR i = 0, npix-1 DO BEGIN
+      spec_in[i,*,0]=flux_roi[i,*,0]>0; only I STOKES fluxes
+      spec_in[i,*,2]=err[*,0]+rmsweight*max(err[*,0])/freq; only I STOKES errors
+      spec_in[i,*,1]=flux_roi[i,*,1]>0; only I STOKES fluxes
+      spec_in[i,*,3]=err[*,1]+rmsweight*max(err[*,1])/freq; only I STOKES errors
+    ENDFOR
+  endelse
   ;===========End array definition============================================================
 
   ;==========Transfer to the bridge the arrays required for fitting==========
@@ -280,7 +287,9 @@ pro gsfitcp_readframe, bridge,task
   xy=array_indices(data_size[1:2],task.idx,/dim)
   x=xy[0,*]
   y=xy[1,*]
-  data_spectrum=(errdata_spectrum=(fit_spectrum=fltarr(data_size[3])))
+  nfreq=data_size[3]
+  npol=data_size[4]
+  data_spectrum=(errdata_spectrum=(fit_spectrum=fltarr(nfreq,npol)))
   sz=size(aparms)
   npix=sz[1]
   nparms=sz[2]
@@ -298,16 +307,22 @@ pro gsfitcp_readframe, bridge,task
     data_spectrum[*]=0
     errdata_spectrum[*]=0
     fit_spectrum[*]=0
-    data_spectrum[task.fmin:task.fmax]=spec_in[j,*,0]+spec_in[j,*,1]
-    errdata_spectrum[task.fmin:task.fmax]=spec_in[j,*,2]+spec_in[j,*,3]
-    fit_spectrum[task.fmin:task.fmax]=spec_out[j,*,0]+spec_out[j,*,1]
+    if n_elements(npol) ne 1 then begin
+      data_spectrum[task.fmin:task.fmax,*]=spec_in[j,*,0:1]
+      errdata_spectrum[task.fmin:task.fmax,*]=spec_in[j,*,2:3]
+      fit_spectrum[task.fmin:task.fmax,*]=spec_out[j,*,0:1]
+    endif else begin
+      data_spectrum[task.fmin:task.fmax]=spec_in[j,*,0]+spec_in[j,*,1]
+      errdata_spectrum[task.fmin:task.fmax]=spec_in[j,*,2]+spec_in[j,*,3]
+      fit_spectrum[task.fmin:task.fmax]=spec_out[j,*,0]+spec_out[j,*,1]
+    endelse
     afit={x:x[j],y:y[j],t:time_idx,fmin:fix(task.fmin),fmax:fix(task.fmax),data:data_spectrum,errdata:errdata_spectrum, specfit:fit_spectrum}
     for k=0,nparms-1 do begin
       afit=create_struct(afit,tags[k],aparms[j,k],errtags[k],eparms[j,k])
     endfor
     new=(lun eq 0)
     if keyword_set(new) then begin
-      header={freq:reform(maps[*,0].freq),time:reform(maps[0,*].time), refmap:maps[0,0],info:cpinput,units:units,errunits:errunits,parnames:tags,errparnames:errtags}
+      header={freq:reform(maps[*,0,0].freq),time:reform(maps[0,0,*].time), refmap:maps[0,0,0],info:cpinput,units:units,errunits:errunits,parnames:tags,errparnames:errtags}
       default,cplog,'gsfitcp.log'
     endif
     MULTI_SAVE,lun,afit,file=cplog, header=header,new=new,xdr=xdr

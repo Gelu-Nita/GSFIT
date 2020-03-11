@@ -198,6 +198,7 @@ pro gsfitview_event,event
   case event.id of
    state.wtime:draw=1
    state.wfreq:draw=1
+   state.wpol:draw=1
    state.wx:draw=1
    state.wy:draw=1
    state.wmaplist:draw=1
@@ -284,23 +285,76 @@ pro gsfitview_event,event
                   opencube:
                   if size(maps,/tname) eq 'STRUCT' then begin
                     if tag_exist(maps,'DATAMAPS') then begin
-                      sz=size(maps.datamaps.data)
-                      if sz[0] eq 3 then begin
-                        answ=dialog_message(['This gsfit file contains only a time frame, but this gsfitview version can only handle files containing at least two time frames!',$
-                          'However,you may use IDL> maps=gsfit_list2map() command line to convert the content of this file to a single timeframe collection of maps.',$
-                          'For your convenience, this map structure could be directly transferred to the main IDL level now. Do you prefer so?'],/question)
-                         if strupcase(answ) eq 'YES' then begin
-                          (SCOPE_VARFETCH('maps',/ENTER,LEVEL=-1)) = (SCOPE_VARFETCH('maps',LEVEL=0))
-                          message,'MAPS structure transferred to the main IDL level.',/info
-                         endif
-                        return
-                      endif
-                      nx=sz[1]
-                      ny=sz[2]
-                      nfreqs=sz[3]
+                        sz=size(maps.datamaps.data)
+                        if tag_exist(maps.datamaps,'dimensions') then begin
+                          case sz[0] of
+                            3:begin
+                               nx=sz[1]
+                               ny=sz[2]
+                               nfreq=sz[3]
+                               npols=1
+                               ntimes=1
+                              end
+                            4: begin
+                                nx=sz[1]
+                                ny=sz[2]
+                                nfreqs=sz[3]
+                                npols=sz[4]
+                                ntimes=1
+                               end 
+                            5: begin
+                                 nx=sz[1]
+                                 ny=sz[2]
+                                 nfreqs=sz[3]
+                                 npols=sz[4]
+                                 ntimes=sz[5]
+                               end  
+                            else: begin
+                                   answ=dialog_message('Unexpected data format, operation aborted!')
+                                   return
+                                  end    
+                           endcase
+                         endif else begin
+                           case sz[0] of
+                             3:begin
+                               nx=sz[1]
+                               ny=sz[2]
+                               nfreq=sz[3]
+                               npols=1
+                               ntimes=1
+                             end
+                             4: begin
+                               nx=sz[1]
+                               ny=sz[2]
+                               nfreqs=sz[3]
+                               npols=1
+                               ntimes=sz[4]
+                             end
+                             5: begin
+                               nx=sz[1]
+                               ny=sz[2]
+                               nfreqs=sz[3]
+                               npols=sz[4]
+                               ntimes=sz[5]
+                             end
+                             else: begin
+                               answ=dialog_message('Unexpected data format, operation aborted!')
+                               return
+                             end
+                           endcase
+                           maps=rep_tag_value(maps, reform(maps.fitmaps,nfreqs,npols,ntimes),'fitmaps')
+                           maps=rep_tag_value(maps,reform(maps.datamaps,nfreqs,npols,ntimes),'datamaps')
+                           maps=rep_tag_value(maps,reform(maps.errmaps,nfreqs,npols,ntimes),'errmaps')
+                         endelse
+
                       maxfreq=nfreqs-1
-                      ntimes=sz[4]
                       maxtime=ntimes-1
+                      maxpol=npols-1
+                      state.nx=nx
+                      state.ny=ny
+                      state.ntimes=ntimes
+                      state.nfreqs=nfreqs
+                      state.npols=npols
                       
                       names=tag_names(maps)
                       validmaps=bytarr(n_tags(maps))
@@ -308,7 +362,7 @@ pro gsfitview_event,event
                       names=names[where(validmaps)]
                       mapsize=lonarr(n_elements(names))
                       for i=0,n_elements(names)-1 do mapsize[i] = (size(maps.(i)))[0]
-                      mapnames=names[where(mapsize eq 2)]
+                      mapnames=names[where(mapsize gt 1)]
                       mapnames=mapnames[sort(mapnames)]
                       allparnames=names[where(mapsize eq 1)] 
                       errparnames=allparnames[where(strmid(allparnames,0,3) eq 'ERR')]
@@ -330,17 +384,19 @@ pro gsfitview_event,event
                       
                       ptr_free,state.pmaps
                       state.pmaps=ptr_new(temporary(maps))
-                      freq=(*state.pmaps).datamaps[*,0].freq
-                      time=reform((*state.pmaps).datamaps[0,*].time)
-                      xrange=get_map_xrange((*state.pmaps).datamaps[0,0])
+                      freq=reform((*state.pmaps).datamaps[*,0,0].freq)
+                      time=reform((*state.pmaps).datamaps[0,0,*].time)
+                      stokes=reform((*state.pmaps).datamaps[0,*,0].stokes)
+                      xrange=get_map_xrange((*state.pmaps).datamaps[0])
                       dx=((*state.pmaps).datamaps[0,0]).dx
                       xpix=xrange[0]+findgen(nx)*dx
-                      yrange=get_map_yrange((*state.pmaps).datamaps[0,0])
-                      dy=((*state.pmaps).datamaps[0,0]).dy
+                      yrange=get_map_yrange((*state.pmaps).datamaps[0])
+                      dy=((*state.pmaps).datamaps[0]).dy
                       ypix=yrange[0]+findgen(ny)*dy
                       state.ppd_data_xrange=xrange
                       state.ppd_data_yrange=yrange
                       widget_control,state.wfreq, set_slider_max=maxfreq,set_value=0,set_uvalue=freq,sensitive=1
+                      widget_control,state.wpol, set_value=(state.npols eq 1)?stokes:[stokes[0]+'+'+stokes[1],stokes],sensitive=1
                       widget_control,state.wtime, set_slider_max=maxtime,set_value=0,set_uvalue=time,sensitive=1
                       widget_control,state.wx,set_value=0,set_uvalue=xpix
                       widget_control,widget_info(state.wx,/child),/sensitive
@@ -355,6 +411,7 @@ pro gsfitview_event,event
                       widget_control,state.wparmlist, set_value=pnames
                       widget_control,state.wparmlist, set_uvalue=dblarr(2,n_elements(pnames))
                       state.nfreqs=nfreqs
+                      state.npols=npols
                       state.ntimes=ntimes
                       state.nx=nx
                       state.ny=ny
@@ -483,8 +540,9 @@ pro gsfitview_display_statistics,state,save=save
  charsize=1.2
  charthick=2
  
- time=reform((*state.pmaps).datamaps[0,*].time)
+ time=reform((*state.pmaps).datamaps[0,0,*].time)
  widget_control,state.wtime,get_value=time_idx
+ pol_idx=(widget_info(state.wpol,/droplist_select)-1)>0
  widget_control,state.wparmlist,get_value=parm_names,get_uvalue=parm_ranges
  pidx=widget_info(state.wparmlist,/DROPLIST_SELECT)
  widget_control,state.wparmlist,get_value=parm_list
@@ -688,6 +746,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
  widget_control,state.wtimeplot,get_value=wtimeplot
  widget_control,state.wtime,get_value=time_idx
  widget_control,state.wfreq,get_value=freq_idx
+ pol_idx=widget_info(state.wpol,/droplist_select)
  widget_control,state.wx,get_value=i,get_uvalue=xpix
  widget_control,state.wy,get_value=j,get_uvalue=ypix
  map_index=widget_info(state.wmaplist,/DROPLIST_SELECT)
@@ -700,10 +759,39 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
  map_index=where(strupcase(tag_names) eq strupcase(map_name))
  parm_index=where(strupcase(tag_names) eq strupcase(parm_name))
  errparm_index=where(strupcase(tag_names) eq strupcase('ERR'+parm_name))
- displaymap=((*state.pmaps).(map_index))[freq_idx,time_idx]
+ freq=(*state.pmaps).datamaps[*,0,0].freq
+ time=reform((*state.pmaps).datamaps[0,0,*].time)
+; displaymap=((*state.pmaps).(map_index))[freq_idx,time_idx]
+; parmap=((*state.pmaps).(parm_index))[time_idx]
+ pol=reform((*state.pmaps).datamaps[0,*,0].stokes)
+ nfreq=state.nfreqs
+ ntime=state.ntimes
+ npol=state.npols
+
+ if npol eq 2 then begin
+      if pol_idx eq 0 then begin
+        displaymap=((*state.pmaps).(map_index))[freq_idx, 0,time_idx]
+        splitid=strsplit(displaymap.id,/extract)
+        id=splitid[0]+' '+((*state.pmaps).(map_index))[freq_idx, 0,time_idx].stokes+'+'+((*state.pmaps).(map_index))[freq_idx, 1,time_idx].stokes
+        if n_elements(splitid) gt 2 then id=strjoin([id,' ',splitid[2:*]])
+        displaymap.id=id
+        data_spectrum=(((*state.pmaps).datamaps)[*, 0,time_idx]).data+(((*state.pmaps).datamaps)[*, 1,time_idx]).data
+        fit_spectrum=(((*state.pmaps).fitmaps)[*, 0,time_idx]).data+(((*state.pmaps).fitmaps)[*, 1,time_idx]).data
+        err_spectrum=(((*state.pmaps).errmaps)[*, 0,time_idx]).data+(((*state.pmaps).errmaps)[*, 1,time_idx]).data
+      endif else begin
+        displaymap=((*state.pmaps).(map_index))[freq_idx, pol_idx-1,time_idx]
+        data_spectrum=(((*state.pmaps).datamaps)[*, pol_idx-1,time_idx]).data
+        fit_spectrum=(((*state.pmaps).fitmaps)[*, pol_idx-1,time_idx]).data
+        err_spectrum=(((*state.pmaps).errmaps)[*, pol_idx-1,time_idx]).data
+      endelse
+    endif else begin
+      displaymap=((*state.pmaps).(map_index))[freq_idx, pol_idx,time_idx]
+      data_spectrum=(((*state.pmaps).datamaps)[*, pol_idx,time_idx]).data
+      fit_spectrum=(((*state.pmaps).fitmaps)[*, pol_idx,time_idx]).data
+      err_spectrum=(((*state.pmaps).errmaps)[*, pol_idx,time_idx]).data
+    endelse
  parmap=((*state.pmaps).(parm_index))[time_idx]
- freq=(*state.pmaps).datamaps[*,0].freq
- time=reform((*state.pmaps).datamaps[0,*].time)
+
  widget_control,state.wfreqlabel,set_value=strcompress(string(freq[freq_idx],format="(f5.2,' GHz ')"))+strcompress(string(freq_idx,format="(' [',i3,']')"),/rem)
  widget_control,state.wtimelabel,set_value=time[time_idx]+' '+strcompress(string(time_idx,format="(' [',i3,']')"),/rem)
   rgb_curr=bytarr(3,256)
@@ -790,9 +878,6 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   
   if draw eq 1 then begin
     wset,wspectrum
-    data_spectrum=(((*state.pmaps).datamaps)[*,time_idx]).data
-    fit_spectrum=(((*state.pmaps).fitmaps)[*,time_idx]).data
-    err_spectrum=(((*state.pmaps).errmaps)[*,time_idx]).data
     sz=size(data_spectrum)
     if i lt sz[1] and j lt sz[2] then begin
       if n_elements(range) gt 0 then dummy=temporary(range)
@@ -1039,17 +1124,28 @@ pro gsfitview,maps
     /bitmap,tooltip='Help')  
 ;=======================================================================================================================      
   row1_base=widget_base(state_base,/row)
+  row1_splitbase=widget_base(row1_base,/row)
+  row1_freqbase=widget_base(row1_splitbase,/row)
+  row1_polbase=widget_base(row1_splitbase,/row)
 ;=======================================================================================================================    
-  wfreqlabel=widget_label(row1_base,xsize=xsize,value='Frequency',font=!defaults.font,/align_center,uname='freqlabel')
+  wpolabel=widget_label(row1_polbase,value='Stokes',font=!defaults.font,/align_center,uname='stokeslabel')
+  g=widget_info(row1_polbase,/geometry)
+  wfreqlabel=widget_label(row1_freqbase,xsize=xsize-g.xsize*1.1,value='Frequency',font=!defaults.font,/align_center,uname='freqlabel')
   wtimelabel=widget_label(row1_base,xsize=xsize,value='Time',font=!defaults.font,/align_center,uname='timelabel')
   wPNGlabel=widget_label(row1_base,xsize=xsize,value='PNG Panel Capture Options',font=!defaults.font,/align_center)
   hist_scale=1.3
   ;wHistLabel=widget_label(row1_base,xsize=xsize*hist_scale,value='Histogram Settings',font=!defaults.font,/align_center);,scr_ysize=1.3*g.scr_ysize)
 ;=======================================================================================================================    
   row2_base=widget_base(state_base,/row)
+  row2_splitbase=widget_base(row2_base,/row)
+  row2_freqbase=widget_base(row2_splitbase,/row)
+  row2_polbase=widget_base(row2_splitbase,/row)
+  row2_timebase=widget_base(row2_base,/row)
 ;=======================================================================================================================    
-  wfreq=WIDGET_SLIDER(row2_base,xsize=xsize,max=maxfreq,uvalue='FREQ',font=!defaults.font,/suppress,uname='frequency')
-  wtime=WIDGET_SLIDER(row2_base,xsize=xsize,uvalue='TIME',max=maxtime,font=!defaults.font,/suppress,uname='time')
+  wpol=widget_droplist(row2_polbase,value=['LL+RR','LL','RR'],font=!defaults.font,/align_center,uname='stokes',sensitive=0)
+  g=widget_info(row2_polbase,/geometry)
+  wfreq=WIDGET_SLIDER(row2_freqbase,xsize=xsize-g.xsize*1.1,max=maxfreq,uvalue='FREQ',font=!defaults.font,/suppress,uname='frequency',sensitive=0)
+  wtime=WIDGET_SLIDER(row2_timebase,xsize=xsize,uvalue='TIME',max=maxtime,font=!defaults.font,/suppress,uname='time',sensitive=0)
   wPNGCheck=cw_bgroup(widget_base(row2_base,xsize=xsize*hist_scale,/row,/frame),['Data','Parm', 'Spec','Time','Hist','Vert'],SET_VALUE=0,/nonexclusive,/row,font=!defaults.font)
 
 ;=======================================================================================================================    
@@ -1140,10 +1236,12 @@ pro gsfitview,maps
   default,nx,100l
   default,ny,100l
   default,nfreqs,100l
+  default,npols,2l
   default,ntimes,100l
   default,pmaps,ptr_new()
   state=$
     {nfreqs:nfreqs,$
+    npols:npols,$
     ntimes:ntimes,$
     nx:nx,$
     ny:ny,$
@@ -1160,6 +1258,7 @@ pro gsfitview,maps
     wx:wx,$
     wy:wy,$
     wmaplist:wmaplist,$
+    wpol:wpol,$
     wtime:wtime,$
     wparmlist:wparmlist,$
     wpixmap:wpixmap,$
