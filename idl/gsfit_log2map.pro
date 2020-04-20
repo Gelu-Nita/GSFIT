@@ -83,10 +83,11 @@ function gsfit_log2map,fitxfile,full_size=full_size,header=header,_extra=_extra
     idx=where(fit.t eq t[j],count)
     if count gt 0 then begin
       afit=fit[idx]
+      npix=(size(afit))[1]
       for i=0, npol-1 do begin
-        maps.datamaps[*,i,j].data[afit.x,afit.y]=transpose(afit.data[*,i])
-        maps.errmaps[*,i,j].data[afit.x,afit.y]=transpose(afit.errdata[*,i])
-        maps.fitmaps[*,i,j].data[afit.x,afit.y]=transpose(afit.specfit[*,i])
+        maps.datamaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.data,nfreq,npix,npol))[*,*,i]))
+        maps.errmaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.errdata,nfreq,npix,npol))[*,*,i]))
+        maps.fitmaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.specfit,nfreq,npix,npol))[*,*,i]))
       end
       maptags=tag_names(maps)
       fittags=tag_names(afit)
