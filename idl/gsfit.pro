@@ -202,7 +202,6 @@ pro gsfit_fit2guess,state
     pnames=strupcase(strcompress((state.header.info.parms_in.name),/rem))
     pinput=state.header.info.parms_in.guess
     fnames=tag_names(fit)
-    
     pinput[where(pnames eq 'N_NTH')]=fit.(where(fnames eq 'N_NTH'))*1d-7
     pinput[where(pnames eq 'B')]=fit.(where(fnames eq 'B'))*1d-2
     pinput[where(pnames eq 'THETA')]=fit.(where(fnames eq 'THETA'))
@@ -399,7 +398,7 @@ pro gsfit_draw,state,draw
             pnames=tag_names(fit)
             for i=0,n_elements(names)-1 do begin
               case names[i] of
-                'T_0':parms[i]=fit.(where(pnames eq 'T_E'))*1e6
+                'T_0':parms[i]=fit.(where(pnames eq 'T_E'))
                 'EMAX':parms[i]=fit.(where(pnames eq 'E_MAX'))
                 'DELTA1':parms[i]=fit.(where(pnames eq 'DELTA'))
                 'N_0':parms[i]=fit.(where(pnames eq 'N_TH'))
@@ -418,6 +417,7 @@ pro gsfit_draw,state,draw
             fast_flux=pol_idx eq 0?reform(rowdata[*,*,0,0]+rowdata[*,*,1,0]):reform(rowdata[*,*,pol_idx-1,0])
             oplot,fast_freq,fast_flux,color=250,thick=2
             fit_flux=spline(fast_freq,fast_flux,freq)
+
             nfreq=n_elements(freq)
             specfit_flux=(pol_idx eq 0) ? total(reform(fit.specfit,nfreq,npol),2):fit.specfit[*,pol_idx-1]
             CHISQR=total(((spectrum-specfit_flux)/err_spectrum)^2,/double)/(2*n_elements(freq)-(state.header.info.nparms.value)[0])
