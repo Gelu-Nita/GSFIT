@@ -58,7 +58,7 @@ pro gsfit_readtb,datafile,maps
       case n_elements(dim) of
         1: maps=reform(maps,dim[0],1,1)
         2: maps=reform(maps,dim[0],1,dim[1]);backward compatibility with no polariziation freq-time maps
-        else: maps=maps[0:2]; Remove unexpected dimmensions, if any!!!
+        else: maps=reform(maps[0:dim[0]*dim[1]*dim[2]-1],dim[0],dim[1],dim[2]); Remove unexpected dimmensions, if any!!!
       endcase
       dim=size(maps,/dim)
       maps=REP_TAG_VALUE(maps,dimensions,'dimensions')
