@@ -9,8 +9,8 @@ function gsfit_fastcode
   end
   if !version.os_family eq 'Windows' then begin
     case !version.arch of
-      'x86_64':renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows')+'GS_Transfer_Slice_64_DP.pro'
-      else:which,renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows')+'GS_Transfer_Slice_32.pro'
+      'x86_64':renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows\64bit')+'GS_Transfer_Slice_64_DP.pro'
+      else:which,renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows\32bit')+'GS_Transfer_Slice_32.pro'
     endcase
   endif else  renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'unix')+'MWTransfer.pro'
 
