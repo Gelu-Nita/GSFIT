@@ -1,4 +1,4 @@
-function gsfit_roi2idx,map,xroi,yroi
+function gsfit_roi2idx,map,xroi,yroi,idx=idx
  get_map_coord,map,xpix,ypix
  xpix=xpix[*,0]
  ypix=ypix[0,*]

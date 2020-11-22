@@ -1,4 +1,8 @@
 pro gsfit_readtb,datafile,maps
+  if valid_map(datafile) then begin
+    maps=temporary(datafile)
+    goto,compute_rms
+  endif
   ;restores brightness temperature maps and convert them to flux maps
   osav=obj_new('idl_savefile',datafile)
   names=osav->names()
@@ -19,6 +23,9 @@ pro gsfit_readtb,datafile,maps
     endif
     endif else message,'WARNING: The restored maps are not registered as brightness temperature maps, proceed with caution!',/cont
     maps=temporary(eomaps)
+    sz=size(maps)
+    if sz[0] eq 1 then maps=reform(maps,sz[1],1,1)
+    if sz[0] eq 2 then maps=reform(maps,sz[1],sz[2],1)
     dim=size(maps,/dim)
     if ~tag_exist(maps,'datatype') then begin
       maps=REP_TAG_VALUE(maps,'Brightness Temperature','datatype')
@@ -64,6 +71,7 @@ pro gsfit_readtb,datafile,maps
       maps=REP_TAG_VALUE(maps,dimensions,'dimensions')
       maps=reform(maps,dim[0],dim[1],dim[2])
     endelse
+    compute_rms:
     ;temporary
     if max(maps.rms) eq 0 then begin
       desc = [ $
