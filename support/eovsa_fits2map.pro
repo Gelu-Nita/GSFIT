@@ -62,6 +62,7 @@ function eovsa_fits2map,files,no_iv2rl=no_iv2rl,flux_threshold=flux_threshold,rm
   if ~has_rms then add_prop,amap,rms=0.0
   maps[i]=amap
  end
+ maps.freq=float(maps.freq)
  time=maps.time & time=time[uniq(time,sort(time))] & ntime=n_elements(time)
  freq=maps.freq & freq=freq[uniq(freq,sort(freq))] & nfreq=n_elements(freq)
  stokes=maps.stokes & stokes=stokes[uniq(stokes,sort(stokes))] & npol=n_elements(stokes)

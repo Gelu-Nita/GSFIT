@@ -318,6 +318,10 @@ pro gsfit_draw,state,draw
       mask = total((*state.pmaps)[*, pol_idx ,time_idx].data,/nan,3) gt (state.header.info.rparms.value)[2]
       displaymap.data*=mask
     end
+    ;code added to bypass the situation of having a displaymap with all NaNs
+     nan_idx=where(finite(displaymap.data) eq 0,count_nan)
+     if count_nan gt 0 then displaymap.data[nan_idx]=0
+    ;end of NaN fix
     plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,charsize=charsize,xrange=state.ppd_data_xrange,yrange=state.ppd_data_yrange
     if ~state.xroi.IsEmpty() then begin 
       xroi=state.xroi.ToArray()
