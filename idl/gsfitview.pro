@@ -291,7 +291,7 @@ pro gsfitview_event,event
                             3:begin
                                nx=sz[1]
                                ny=sz[2]
-                               nfreq=sz[3]
+                               nfreqs=sz[3]
                                npols=1
                                ntimes=1
                               end
@@ -319,7 +319,7 @@ pro gsfitview_event,event
                              3:begin
                                nx=sz[1]
                                ny=sz[2]
-                               nfreq=sz[3]
+                               nfreqs=sz[3]
                                npols=1
                                ntimes=1
                              end
@@ -764,11 +764,11 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
 ; displaymap=((*state.pmaps).(map_index))[freq_idx,time_idx]
 ; parmap=((*state.pmaps).(parm_index))[time_idx]
  pol=reform((*state.pmaps).datamaps[0,*,0].stokes)
- nfreq=state.nfreqs
- ntime=state.ntimes
- npol=state.npols
+ nfreqs=state.nfreqs
+ ntimes=state.ntimes
+ npols=state.npols
 
- if npol eq 2 then begin
+ if npols eq 2 then begin
       if pol_idx eq 0 then begin
         displaymap=((*state.pmaps).(map_index))[freq_idx, 0,time_idx]
         splitid=strsplit(displaymap.id,/extract)
