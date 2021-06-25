@@ -8,10 +8,7 @@ function gsfit_fastcode
     goto,invalid_renderer
   end
   if !version.os_family eq 'Windows' then begin
-    case !version.arch of
-      'x86_64':renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows\64bit')+'GS_Transfer_Slice_64_DP.pro'
-      else:which,renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows\32bit')+'GS_Transfer_Slice_32.pro'
-    endcase
+    renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows')+path_sep()+'gs_transfer_dp.pro'
   endif else  renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'unix')+'MWTransfer.pro'
 
   dirpath=file_dirname(renderer,/mark)
@@ -362,7 +359,7 @@ pro gsfit_draw,state,draw
         Npix=1l
         Nvox=1L
         rowdata=make_array([npix,state.header.info.fastcode.pixdim],/float)
-        parms=reform(state.header.info.fastcode.parms.value, npix,nvox, n_elements(state.header.info.fastcode.parms.value))
+        parms=double(reform(state.header.info.fastcode.parms.value, npix,nvox, n_elements(state.header.info.fastcode.parms.value)))
         res=execute(state.header.info.fastcode.execute)
         guess_freq=reform(datain[0,*])
         guess_flux=pol_idx eq 0?reform(rowdata[*,*,0,0]+rowdata[*,*,1,0]):reform(rowdata[*,*,pol_idx-1,0])
@@ -384,7 +381,7 @@ pro gsfit_draw,state,draw
     if ~l.IsEmpty() then begin
       filter=(l.Filter(Lambda(l,x,y,t:l.x eq x and l.y eq y and l.t eq t),i,j,time_idx))
       match=l.where(filter.toarray(),count=count)
-      widget_control,state.wfitpix,set_value=count gt 0?match[0]+1:0
+      widget_control,state.wfitpix,set_value=(count gt 0)?match[0]+1:0
       color=[150,50,200]
       if count gt 0 then begin
         idx=match[0]
@@ -397,7 +394,7 @@ pro gsfit_draw,state,draw
         oplot,freq[fit.fmin:fit.fmax],specfit,color=color[pol_idx],thick=2
          
         if fastcode_over[0] eq 2 then begin 
-            parms=state.header.info.fastcode.parms.value
+            parms=double(state.header.info.fastcode.parms.value)
             names=strupcase(strcompress(state.header.info.fastcode.parms.name,/rem))
             pnames=tag_names(fit)
             for i=0,n_elements(names)-1 do begin
@@ -675,7 +672,8 @@ pro gsfit_callback,status,error,bridge,userdata
     state.fittasks(task.id)=task
     gsfit_update_queue,state
   endelse
-  widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit),set_value=n_elements(state.fit)
+  widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit)
+  widget_control,state.wfitpix,set_value=n_elements(state.fit)
   widget_control,state.wfitpix,send_event={id:0l,top:0l,handler:0l,value:n_elements(state.fit),drag:0}
   pending=gsfit_where_pending(state,task_count)
   if task_count gt 0 and ~keyword_set(abort) then begin
@@ -981,7 +979,8 @@ pro gsfit_event,event
                  state.fittasks->Remove,/all
                  state.fit->Remove,/all
                  gsfit_update_queue,state
-                 widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit),set_value=n_elements(state.fit)
+                 widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit)
+                 widget_control,state.wfitpix,set_value=n_elements(state.fit)
                  widget_control,state.wfitpix,send_event={id:0l,top:0l,handler:0l,value:n_elements(state.fit),drag:0}
                  file=dialog_pickfile(filter='*.sav',title='Select an IDL sav file containg an EOVSA map cube structure',/read)
                  if file ne '' then begin
@@ -1282,7 +1281,8 @@ pro gsfit_event,event
                            state=add_tag(state,header,'header')
                            state.fit.remove,/all
                            state.fit.add,fit,/extract
-                           widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit),set_value=n_elements(state.fit) 
+                           widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit) 
+                           widget_control,state.wfitpix,set_value=n_elements(state.fit) 
                            info=header.info
                            goto,newinfo
                          end
@@ -1368,7 +1368,8 @@ pro gsfit_event,event
                                    widget_control,state.wsavefitlist,get_uvalue=fits2save  
                                    if ~fits2save then begin
                                     state.fit->Remove,/all
-                                    widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit),set_value=n_elements(state.fit)
+                                    widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit)
+                                    widget_control,state.wfitpix,set_value=n_elements(state.fit)
                                     widget_control,state.wfitpix,send_event={id:0l,top:0l,handler:0l,value:n_elements(state.fit),drag:0}
                                     draw=1
                                    end 
@@ -1568,7 +1569,7 @@ end
 
 pro gsfit_list_slider_set_value,id,value
  max_value=max(widget_info(id,/slider_min_max))
- widget_control,widget_info(widget_info(id,/parent),find_by_uname='fitpixlabel'),set_value=value eq 0?'No fit solution computed for the selected pixel!':'Selected Fit Solution: '+strcompress(string(value,max_value,format="(i8,'/',i8)"),/rem)
+ widget_control,widget_info(widget_info(id,/parent),find_by_uname='fitpixlabel'),set_value=(value eq 0)?'No fit solution computed for the selected pixel!':'Selected Fit Solution: '+strcompress(string(value,max_value,format="(i8,'/',i8)"),/rem)
  widget_control,id,pro_set_value=''
  widget_control,id,set_value=value
  widget_control,id,pro_set_value='gsfit_list_slider_set_value'

@@ -25,7 +25,7 @@ pro gsfit_readtb,datafile,maps
     maps=temporary(eomaps)
     sz=size(maps)
     if sz[0] eq 1 then maps=reform(maps,sz[1],1,1)
-    if sz[0] eq 2 then maps=reform(maps,sz[1],sz[2],1)
+    if sz[0] eq 2 then maps=reform(maps,sz[1],1,sz[2])
     dim=size(maps,/dim)
     if ~tag_exist(maps,'datatype') then begin
       maps=REP_TAG_VALUE(maps,'Brightness Temperature','datatype')
