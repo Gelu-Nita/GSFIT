@@ -233,7 +233,6 @@ pro gsfitview_event,event
                          endif
                          end
    state.wHist.wROIopen:begin                           
- 
                            widget_control,state.wMouse.Cursor,send_event={ID:0L,Top:0l,Handler:0L,SELECT:1L} 
                            if widget_info(state.wMouse.RROI,/button) then widget_control,state.wMouse.RROI,send_event={ID:0L,Top:0l,Handler:0L,SELECT:0L}                           
                            if widget_info(state.wMouse.PROI,/button) then widget_control,state.wMouse.PROI,send_event={ID:0L,Top:0l,Handler:0L,SELECT:0L}

@@ -8,10 +8,7 @@ function gsfit_fastcode
     goto,invalid_renderer
   end
   if !version.os_family eq 'Windows' then begin
-    case !version.arch of
-      'x86_64':renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows\64bit')+'GS_Transfer_Slice_64_DP.pro'
-      else:which,renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows\32bit')+'GS_Transfer_Slice_32.pro'
-    endcase
+    renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows')+path_sep()+'gs_transfer_dp.pro'
   endif else  renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'unix')+'MWTransfer.pro'
 
   dirpath=file_dirname(renderer,/mark)
@@ -295,9 +292,10 @@ pro gsfit_draw,state,draw
       if pol_idx eq 0 then begin
         displaymap=(*state.pmaps)[freq_idx, 0,time_idx]
         splitid=strsplit(displaymap.id,/extract)
-        id=splitid[0]+' '+((*state.pmaps)[0, 0,time_idx]).stokes+'+'+((*state.pmaps)[0, 1,time_idx]).stokes
+        id=splitid[0]+' ('+((*state.pmaps)[0, 0,time_idx]).stokes+'+'+((*state.pmaps)[0, 1,time_idx]).stokes+')'
         if n_elements(splitid) gt 2 then id=strjoin([id,' ',splitid[2:*]])
         displaymap.id=id
+        displaymap.data=((*state.pmaps)[freq_idx, 0,time_idx].data+(*state.pmaps)[freq_idx, 1,time_idx].data)
         spectrum=((*state.pmaps)[*, 0,time_idx]).data>0+((*state.pmaps)[*, 1,time_idx]).data>0
         err=((*state.pmaps).rms)[*, 0,time_idx]>0+((*state.pmaps).rms)[*, 1,time_idx]>0
       endif else begin
@@ -315,7 +313,11 @@ pro gsfit_draw,state,draw
       
     widget_control,state.wspectrum.threshold,get_value=apply_threshold
     if apply_threshold[0] then begin
-      mask = total((*state.pmaps)[*, pol_idx ,time_idx].data,/nan,3) gt (state.header.info.rparms.value)[2]
+      if npol gt 1 then begin
+        if pol_idx eq 0 then begin
+          mask = total(total((*state.pmaps)[*, * ,time_idx].data,/nan,3),/nan,3) gt (state.header.info.rparms.value)[2]
+        endif else mask = total((*state.pmaps)[*, pol_idx-1 ,time_idx].data,/nan,3) gt (state.header.info.rparms.value)[2]
+      endif else mask = total((*state.pmaps)[*, pol_idx ,time_idx].data,/nan,3) gt (state.header.info.rparms.value)[2]
       displaymap.data*=mask
     end
     ;code added to bypass the situation of having a displaymap with all NaNs
@@ -362,7 +364,7 @@ pro gsfit_draw,state,draw
         Npix=1l
         Nvox=1L
         rowdata=make_array([npix,state.header.info.fastcode.pixdim],/float)
-        parms=reform(state.header.info.fastcode.parms.value, npix,nvox, n_elements(state.header.info.fastcode.parms.value))
+        parms=double(reform(state.header.info.fastcode.parms.value, npix,nvox, n_elements(state.header.info.fastcode.parms.value)))
         res=execute(state.header.info.fastcode.execute)
         guess_freq=reform(datain[0,*])
         guess_flux=pol_idx eq 0?reform(rowdata[*,*,0,0]+rowdata[*,*,1,0]):reform(rowdata[*,*,pol_idx-1,0])
@@ -384,7 +386,7 @@ pro gsfit_draw,state,draw
     if ~l.IsEmpty() then begin
       filter=(l.Filter(Lambda(l,x,y,t:l.x eq x and l.y eq y and l.t eq t),i,j,time_idx))
       match=l.where(filter.toarray(),count=count)
-      widget_control,state.wfitpix,set_value=count gt 0?match[0]+1:0
+      widget_control,state.wfitpix,set_value=(count gt 0)?match[0]+1:0
       color=[150,50,200]
       if count gt 0 then begin
         idx=match[0]
@@ -397,7 +399,7 @@ pro gsfit_draw,state,draw
         oplot,freq[fit.fmin:fit.fmax],specfit,color=color[pol_idx],thick=2
          
         if fastcode_over[0] eq 2 then begin 
-            parms=state.header.info.fastcode.parms.value
+            parms=double(state.header.info.fastcode.parms.value)
             names=strupcase(strcompress(state.header.info.fastcode.parms.name,/rem))
             pnames=tag_names(fit)
             for i=0,n_elements(names)-1 do begin
@@ -418,7 +420,7 @@ pro gsfit_draw,state,draw
             rowdata=make_array([npix,state.header.info.fastcode.pixdim],/float)
             res=execute(state.header.info.fastcode.execute)
             fast_freq=reform(datain[0,*])
-            fast_flux=pol_idx eq 0?reform(rowdata[*,*,0,0]+rowdata[*,*,1,0]):reform(rowdata[*,*,pol_idx-1,0])
+            fast_flux=pol_idx eq 0?(reform(rowdata[*,*,0,0]+rowdata[*,*,1,0])):reform(rowdata[*,*,pol_idx-1,0])
             oplot,fast_freq,fast_flux,color=250,thick=2
             fit_flux=spline(fast_freq,fast_flux,freq)
 
@@ -620,10 +622,10 @@ pro gsfit_sendfittask,bridge,state,task
     ENDFOR
   endif else begin
     FOR i = 0, npix-1 DO BEGIN
-      spec_in[i,*,0]=flux_roi[i,*,0]>0; only I STOKES fluxes
-      spec_in[i,*,2]=err[*,0]+rmsweight*max(err[*,0])/freq; only I STOKES errors
-      spec_in[i,*,1]=flux_roi[i,*,1]>0; only I STOKES fluxes
-      spec_in[i,*,3]=err[*,1]+rmsweight*max(err[*,1])/freq; only I STOKES errors
+      spec_in[i,*,0]=flux_roi[i,*,0]>0
+      spec_in[i,*,2]=err[*,0]+rmsweight*max(err[*,0])/freq
+      spec_in[i,*,1]=flux_roi[i,*,1]>0
+      spec_in[i,*,3]=err[*,1]+rmsweight*max(err[*,1])/freq
     ENDFOR  
   endelse
 
@@ -675,7 +677,8 @@ pro gsfit_callback,status,error,bridge,userdata
     state.fittasks(task.id)=task
     gsfit_update_queue,state
   endelse
-  widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit),set_value=n_elements(state.fit)
+  widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit)
+  widget_control,state.wfitpix,set_value=n_elements(state.fit)
   widget_control,state.wfitpix,send_event={id:0l,top:0l,handler:0l,value:n_elements(state.fit),drag:0}
   pending=gsfit_where_pending(state,task_count)
   if task_count gt 0 and ~keyword_set(abort) then begin
@@ -981,11 +984,12 @@ pro gsfit_event,event
                  state.fittasks->Remove,/all
                  state.fit->Remove,/all
                  gsfit_update_queue,state
-                 widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit),set_value=n_elements(state.fit)
+                 widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit)
+                 widget_control,state.wfitpix,set_value=n_elements(state.fit)
                  widget_control,state.wfitpix,send_event={id:0l,top:0l,handler:0l,value:n_elements(state.fit),drag:0}
                  file=dialog_pickfile(filter='*.sav',title='Select an IDL sav file containg an EOVSA map cube structure',/read)
                  if file ne '' then begin
-                  gsfit_readtb,file,maps
+                  maps=eovsa_maps2gsfit(file,/sfu)
                   if valid_map(maps) then begin
                       validmaps:
                       sz=size(maps.data)
@@ -1232,14 +1236,14 @@ pro gsfit_event,event
                         end
                        end 
                        end   
-    state. wList2View:begin
+    state.wList2View:begin
                           if ~state.fit.IsEmpty() then begin
                            fit=state.fit.toarray()
                            maps=gsfit_log2map(fit,header=state.header)
                            gsfitview,maps
                           end 
                        end 
-   state. wExportFitList:begin
+   state.wExportFitList:begin
                          if  ~state.fit.IsEmpty() then begin
                            file=dialog_pickfile(filter='*.sav',title='Select a filename to conveet and save the current fit list as a structure',/write,/overwrite)
                            if file ne '' then begin
@@ -1282,7 +1286,8 @@ pro gsfit_event,event
                            state=add_tag(state,header,'header')
                            state.fit.remove,/all
                            state.fit.add,fit,/extract
-                           widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit),set_value=n_elements(state.fit) 
+                           widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit) 
+                           widget_control,state.wfitpix,set_value=n_elements(state.fit) 
                            info=header.info
                            goto,newinfo
                          end
@@ -1368,7 +1373,8 @@ pro gsfit_event,event
                                    widget_control,state.wsavefitlist,get_uvalue=fits2save  
                                    if ~fits2save then begin
                                     state.fit->Remove,/all
-                                    widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit),set_value=n_elements(state.fit)
+                                    widget_control,state.wfitpix,sensitive=1,set_slider_max=n_elements(state.fit)
+                                    widget_control,state.wfitpix,set_value=n_elements(state.fit)
                                     widget_control,state.wfitpix,send_event={id:0l,top:0l,handler:0l,value:n_elements(state.fit),drag:0}
                                     draw=1
                                    end 
@@ -1527,7 +1533,36 @@ pro gsfit_event,event
                       end
                      end
                      exit_bridges:
-                   end                                           
+                   end 
+   state.wMouse.wROISave: begin
+                     file=dialog_pickfile(title='Select a filename to save ROI coordinates',filter='*.sav',/overwrite,/write)
+                     if file ne '' then begin
+                       xroi=state.xroi->ToArray()
+                       yroi=state.yroi->ToArray()
+                       save,xroi,yroi,file=file
+                     endif
+                   end  
+   
+   state.wMouse.wROIopen:begin
+                     widget_control,state.wMouse.Cursor,send_event={ID:0L,Top:0l,Handler:0L,SELECT:1L}
+                     if widget_info(state.wMouse.RROI,/button) then widget_control,state.wMouse.RROI,send_event={ID:0L,Top:0l,Handler:0L,SELECT:0L}
+                     if widget_info(state.wMouse.PROI,/button) then widget_control,state.wMouse.PROI,send_event={ID:0L,Top:0l,Handler:0L,SELECT:0L}
+                     if widget_info(state.wMouse.FROI,/button) then widget_control,state.wMouse.FROI,send_event={ID:0L,Top:0l,Handler:0L,SELECT:0L}
+                     file=dialog_pickfile(title='Select a filename to restore a set of ROI coordinates',filter='*.sav',/read)
+                     if file ne '' then begin
+                       restore,file
+                       if n_elements(xroi) eq 0 or n_elements(yroi) eq 0 then begin
+                         answ=dialog_message('Unexpected file content!')
+                       endif else begin
+                         state.xroi->Remove,/all
+                         state.yroi->Remove,/all
+                         state.xroi->Add,xroi,/extract
+                         state.yroi->Add,yroi,/extract
+                         draw=1
+                       endelse
+                     endif
+                   end                
+                                                                           
    state.wHelp: begin
                  help='http://www.ovsa.njit.edu/wiki/index.php/GSFIT_Help'
                  if !version.os_family eq 'Windows' then spawn,'start /max '+help else answ=dialog_message(' For help, please open ' +help+' in your preffred browser.')    
@@ -1568,7 +1603,7 @@ end
 
 pro gsfit_list_slider_set_value,id,value
  max_value=max(widget_info(id,/slider_min_max))
- widget_control,widget_info(widget_info(id,/parent),find_by_uname='fitpixlabel'),set_value=value eq 0?'No fit solution computed for the selected pixel!':'Selected Fit Solution: '+strcompress(string(value,max_value,format="(i8,'/',i8)"),/rem)
+ widget_control,widget_info(widget_info(id,/parent),find_by_uname='fitpixlabel'),set_value=(value eq 0)?'No fit solution computed for the selected pixel!':'Selected Fit Solution: '+strcompress(string(value,max_value,format="(i8,'/',i8)"),/rem)
  widget_control,id,pro_set_value=''
  widget_control,id,set_value=value
  widget_control,id,pro_set_value='gsfit_list_slider_set_value'
@@ -1803,7 +1838,7 @@ pro gsfit,nthreads
     wResetSettings:wResetSettings,$
     wCopySettings:wCopySettings,$
     header:gsfit_info2header(info),$
-    wMouse:{Cursor:wCursor,RROI:wRROI,FROI:wFROI,PROI:wPROI},$
+    wMouse:{Cursor:wCursor,RROI:wRROI,FROI:wFROI,PROI:wPROI,wROISave:wROISave,wROIOpen:wROIOpen},$
     ppd_dev_xrange:[0,0],ppd_dev_yrange:[0,0],$
     ppd_data_xrange:[0.0,0.0],ppd_data_yrange:[0.0,0.0],$
     left_button_down:0, $

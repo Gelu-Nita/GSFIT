@@ -25,7 +25,7 @@ pro gsfit_readtb,datafile,maps
     maps=temporary(eomaps)
     sz=size(maps)
     if sz[0] eq 1 then maps=reform(maps,sz[1],1,1)
-    if sz[0] eq 2 then maps=reform(maps,sz[1],sz[2],1)
+    if sz[0] eq 2 then maps=reform(maps,sz[1],1,sz[2])
     dim=size(maps,/dim)
     if ~tag_exist(maps,'datatype') then begin
       maps=REP_TAG_VALUE(maps,'Brightness Temperature','datatype')
@@ -57,7 +57,8 @@ pro gsfit_readtb,datafile,maps
        endcase
       dimensions=['Freq','Pol','Time']
       dim=size(maps,/dim)
-      maps=REP_TAG_VALUE(maps,dimensions,'dimensions')
+      maps=rem_tag(maps,'dimensions')
+      maps=add_tag(maps,'dimensions',dimensions)
       maps=reform(maps,dim[0],dim[1],dim[2])
     endif else begin
       ;Here we make some assumptions based on preestablished conventions
