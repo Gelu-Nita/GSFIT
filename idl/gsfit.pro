@@ -1,38 +1,5 @@
 forward_function gsfit_log2map, gsfit_log2list
 
-function gsfit_fastcode
-  cdir=curdir()
-  catch, error_stat
-  if error_stat ne 0 then begin
-    catch, /cancel
-    goto,invalid_renderer
-  end
-  if !version.os_family eq 'Windows' then begin
-    renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows')+path_sep()+'gs_transfer_dp.pro'
-  endif else  renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'unix')+'MWTransfer.pro'
-
-  dirpath=file_dirname(renderer,/mark)
-  cd,dirpath
-  break_file, renderer, dsk_log, dir, filename, ext
-  compile_test=execute('RESOLVE_ROUTINE, filename , /COMPILE_FULL_FILE ,/either')
-  cd,cdir
-  par=ROUTINE_INFO(filename,/par)
-  if par.num_args lt 2 or par.num_kw_args lt 1 then goto,invalid_renderer
-  template=filename+',parms,rowdata'
-  for i=2,par.num_args-1 do template+=','+strlowcase(par.args[i])
-  for i=0,par.num_kw_args-1 do begin
-    if strupcase(par.kw_args[i]) ne 'INFO' then template+=','+strlowcase(par.kw_args[i])+'='+strlowcase(par.kw_args[i])
-  end
-  if execute(filename+',INFO=INFO') then begin
-    if size(info,/tname) ne 'STRUCT' then goto,invalid_renderer
-    return,CREATE_STRUCT('execute',template,info)
-  end
-  invalid_renderer:
-  cd,cdir
-  return,0
-end
-
-
 function gsfit_libinfo,libpath,getlib=getlib
   entry_point:
   if keyword_set(getlib) then begin
@@ -166,7 +133,9 @@ function gsfit_libinfo,libpath,getlib=getlib
   info={get_function:get_function,nparms:nparms,rparms:rparms,parms_in:parms_in,parms_out:parms_out,path:libpath,rms:4d}
   save,info,file='libinfo.inp'
   exit_point:
-  if ~tag_exist(info,'fastcode') then info=add_tag(info,gsfit_fastcode(),'fastcode')
+  if ~tag_exist(info,'fastcode') $
+    then info=add_tag(info,gsfit_fastcode(),'fastcode') $
+    else info=rep_tag_value(info,gsfit_fastcode(),'fastcode')
   if size(info.fastcode,/tname) ne 'STRUCT' then begin
     info=rem_tag(info,'fastcode')
     info=add_tag(info,gsfit_fastcode(),'fastcode')
@@ -231,7 +200,7 @@ if keyword_set(fastcode_update) and tag_exist(state.header.info,'fastcode') and 
   rinput=state.header.info.rparms.value
   pnames=strupcase(strcompress((state.header.info.parms_in.name),/rem))
   pinput=state.header.info.parms_in.guess
-  arcsec2cm=7.27d7;gx_rsun()/(pb0r((*state.pmaps)[0].time)*60)[2]
+  arcsec2cm=7.27d7
   for i=0,n_elements(names)-1 do begin
     case names[i] of
       'DS':parms[i]=rinput[where(rnames eq 'PIXELAREA')]*(arcsec2cm^2)
