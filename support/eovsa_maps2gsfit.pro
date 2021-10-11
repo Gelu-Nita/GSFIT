@@ -30,7 +30,7 @@ function eovsa_maps2gsfit,maps_in,flux_threshold=flux_threshold,rms_mask=rms_mas
   endif
   
   if ~file_exist(maps_in) then begin
-    message, 'A valid map structure or a filename of an IDL file cntaining such structure is expected! Operation abortd!',/cont
+    message, 'A valid map structure or a filename of an IDL file containing such structure is expected! Operation abortd!',/cont
     return,!null
   endif
   ;restores brightness temperature maps and convert them to flux maps
@@ -57,15 +57,32 @@ if ~valid_map(maps) then begin
  return,!null
 endif
   
+;if tag_exist(maps,'datatype') then begin
+;  if not ((maps[0].datatype eq 'Brightness Temperature') or (maps[0].datatype eq 'Flux')) then begin
+;    message,'Error: The restored maps are not registered as brightness temperature or flux maps,operation aborted!',/cont
+;    return,!null
+;  endif
+;endif else begin
+;  message,'WARNING: The restored maps are not registered as brightness temperature or flux maps. Formatting operation aborted!',/cont
+;  return,maps
+;endelse
+
 if tag_exist(maps,'datatype') then begin
   if not ((maps[0].datatype eq 'Brightness Temperature') or (maps[0].datatype eq 'Flux')) then begin
-    message,'Error: The restored maps are not registered as brightness temperature or flux maps,operation aborted!',/cont
+    message,'Error: The restored maps are not brightness temperature or flux maps,operation aborted!',/cont
     return,!null
   endif
-endif else begin
-  message,'WARNING: The restored maps are not registered as brightness temperature or flux maps. Formatting operation aborted!',/cont
-  return,maps
-endelse
+endif else message,'WARNING: The restored maps are not registered as brightness temperature maps, proceed with caution!',/cont
+maps=temporary(maps)
+sz=size(maps)
+if sz[0] eq 1 then maps=reform(maps,sz[1],1,1)
+if sz[0] eq 2 then maps=reform(maps,sz[1],1,sz[2])
+dim=size(maps,/dim)
+if ~tag_exist(maps,'datatype') then begin
+  maps=REP_TAG_VALUE(maps,'Brightness Temperature','datatype')
+  maps=REP_TAG_VALUE(maps,'K','dataunits')
+  maps=REP_TAG_VALUE(maps,'K','rmsunits')
+endif
 
 maps.freq=long(float(maps.freq)*10000)/10000.
 time=maps.time & time=time[uniq(time,sort(time))] & ntime=n_elements(time)
