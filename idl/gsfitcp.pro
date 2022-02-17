@@ -101,7 +101,7 @@ pro gsfitcp_set_bridges, nbridges,new=new,force=force
     bridge_state=replicate({status:'',task:'',time:'',calls:'',error:''},nbridges)
     for i=start_index,nbridges-1 do begin
       message,string(i+1,format="('Initializing bridge #',i3)"),/info
-      bridge=obj_new('IDL_IDLBridge',userdata=main_base,callback='gsfitcp_callback',out=GETENV('IDL_TMPDIR')+GETENV('USER')+strcompress('gsfitcp_bridge'+string(i)+'.log',/rem))
+      bridge=obj_new('IDL_Bridge',userdata=main_base,callback='gsfitcp_callback',out=GETENV('IDL_TMPDIR')+GETENV('USER')+strcompress('gsfitcp_bridge'+string(i)+'.log',/rem))
       if obj_valid(bridge) then begin
         bridge->SetVar,'id',i+1
         code=bridge->Status(error=error)
@@ -468,8 +468,7 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
   if keyword_set(exit) then begin
     gsfitcp_flush_queue
     obj_destroy,bridges
-    obj_destroy,bridges
-    if lun gt 0 then free_lun,lun
+    if n_elements(lun) gt 0 then if lun gt 0 then free_lun,lun
     dummy=temporary(cplog)
     dummy=temporary(tasklist)
     dummy=temporary(maps)
@@ -479,7 +478,7 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
   endif
   if N_PARAMS() eq 0 and n_elements(quiet) eq 0 then begin
     message,'For a detailed description visit http://www.ovsa.njit.edu/wiki/index.php/GSFITCP_Help, or use one of the folowing calling sequences:',/cont
-    print,'% IDL-> gsfitcp, taskfilename; to provide a path to a stored GSFIT task stracture
+    print,'% IDL-> gsfitcp, taskfilename; to provide a path to a stored GSFIT task structure
     print,'% IDL-> gsfitcp, taskstructure; to provide an already restored GSFIT task structure
     print,'% IDL-> gsfitcp, nthreads; to set,increase, or decrease the number of ashyncronious threads to be used
     print,'% IDL-> gsfitcp, out=out,log; to change the default "gsfitcp.log" path for run-time logging of the results.
@@ -488,7 +487,7 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
     print,'% IDL-> gsfitcp, /start; to start processing the task queue
     print,'% IDL-> gsfitcp, /flush; to flush the pending task queue
     print,'% IDL-> gsfitcp, /abort; to abort all active tasks and flush the pending task queue
-    print,'% IDL-> gsfitcp, /exit; to abort all active tasks, flush the pending task queue, and exit the apllication
+    print,'% IDL-> gsfitcp, /exit; to abort all active tasks, flush the pending task queue, and exit the application
     message,'% Any logical combination of the arguments and keywords listed above should result in a valid single-line calling sequence',/cont
   endif
 

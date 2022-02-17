@@ -126,7 +126,7 @@ if maps[0].datatype eq 'Brightness Temperature' then begin
   endfor
 endif
 
-;Here te conversion from I=(RR+LL)/2 EO VSA conventio to I=(RCP+LCP) Gsfit conventio is done
+;Here te conversion from I=(RR+LL)/2 EOVSA conventio to I=(RCP+LCP) Gsfit conventio is done
 ;Also if only XX or YY polariations are present, conversio to I=2XX or I=2YY is performed
 if npol eq 1 then begin
   ;Here XX, YY, RR,or LL single polarizations are expected

@@ -1493,7 +1493,7 @@ pro gsfit_event,event
                      endif
                      for i=start_index,nbridges-1 do begin
                       message,strcompress(string(i+1,format="('Initializing bridge #',i3)")),/info
-                      bridge=obj_new('IDL_IDLBridge',userdata=state.main_base,callback='gsfit_callback',out=GETENV('IDL_TMPDIR')+GETENV('USER')+strcompress('gsfit_bridge'+string(i)+'.log',/rem))  
+                      bridge=obj_new('IDL_Bridge',userdata=state.main_base,callback='gsfit_callback',out=GETENV('IDL_TMPDIR')+GETENV('USER')+strcompress('gsfit_bridge'+string(i)+'.log',/rem))  
                       if obj_valid(bridge) then begin
                         bridge->SetVar,'id',i
                         code=bridge->Status(error=error)
@@ -1756,7 +1756,7 @@ pro gsfit,nthreads
   wBridges= cw_objfield(wToolbarBase,min=1,max=!CPU.HW_NCPU,value=1,label='Number of parallel threads:',xtextsize=3,inc=1,type=1l)
   for i=0,nthreads-1 do begin
     message,strcompress(string(i+1,format="('Initializing bridge #',i3)")),/info
-    bridge=obj_new('IDL_IDLBridge',userdata=main_base,callback='gsfit_callback',out=GETENV('IDL_TMPDIR')+GETENV('USER')+strcompress('gsfit_bridge'+string(i)+'.log',/rem))  
+    bridge=obj_new('IDL_Bridge',userdata=main_base,callback='gsfit_callback',out=GETENV('IDL_TMPDIR')+GETENV('USER')+strcompress('gsfit_bridge'+string(i)+'.log',/rem))  
     if obj_valid(bridge) then begin
       bridge->SetVar,'id',i
       bridges->Add,bridge
