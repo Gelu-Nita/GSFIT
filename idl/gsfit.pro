@@ -459,7 +459,7 @@ pro gsfit_update_queue,state
   widget_control,state.wTab,set_tab_current=1
   for i=0,state.fittasks.Count()-1 do begin
     item=state.fittasks(i)
-    line={tim_idx:item.t,npix:n_elements(item.idx),status:item.status}
+    line={tim_idx:long(item.t),npix:n_elements(item.idx),status:item.status}
     rows=i eq 0?line:[rows,line]
     ids=i eq 0 ? string(item.id,format='(g0)'):[ids, string(item.id,format='(g0)')]
   endfor

@@ -84,7 +84,7 @@ if ~tag_exist(maps,'datatype') then begin
   maps=REP_TAG_VALUE(maps,'K','rmsunits')
 endif
 
-maps.freq=long(float(maps.freq)*10000)/10000.
+maps.freq=long(float(maps.freq)*100)/100.
 time=maps.time & time=time[uniq(time,sort(time))] & ntime=n_elements(time)
 freq=maps.freq & freq=freq[uniq(freq,sort(freq))] & nfreq=n_elements(freq)
 stokes=maps.stokes & stokes=stokes[uniq(stokes,sort(stokes))] & npol=n_elements(stokes)

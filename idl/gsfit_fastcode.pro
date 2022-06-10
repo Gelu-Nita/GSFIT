@@ -6,10 +6,9 @@ function gsfit_fastcode,array=array
     goto,invalid_renderer
   end
   if !version.os_family eq 'Windows' then begin
-    renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'windows')+path_sep()+$
-      (keyword_set(array)?'mw_transfer_arr.pro':'gs_transfer_dp.pro')
-  endif else  renderer=gx_findfile(folder='userslib'+path_sep()+'radio_flaring'+path_sep()+'unix')+$
-      (keyword_set(array)?'mwtransferarr\mwtransferarr.pro':'mwtransfer\mwtransfer.pro')
+    renderer=gx_findfile(keyword_set(array)?'mw_transfer_arr.pro':'gs_transfer_dp.pro')
+  endif else  $
+    renderer=gx_findfile(keyword_set(array)?'mwtransferarr\mwtransferarr.pro':'mwtransfer\mwtransfer.pro')
 
   dirpath=file_dirname(renderer,/mark)
   cd,dirpath

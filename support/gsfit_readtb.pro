@@ -1,6 +1,7 @@
 pro gsfit_readtb,datafile,maps
   if valid_map(datafile) then begin
-    maps=temporary(datafile)
+    dim=size(datafile,/dim)
+    maps=reform(datafile,dim)
     goto,compute_rms
   endif
   ;restores brightness temperature maps and convert them to flux maps
@@ -29,7 +30,7 @@ pro gsfit_readtb,datafile,maps
     dim=size(maps,/dim)
     if ~tag_exist(maps,'datatype') then begin
       maps=REP_TAG_VALUE(maps,'Brightness Temperature','datatype')
-      maps=REP_TAG_VALUE(maps,'K','dataunit')
+      maps=REP_TAG_VALUE(maps,'K','dataunits')
     endif
     if tag_exist(maps,'dimensions') then begin
       dimensions=maps[0].dimensions
@@ -90,7 +91,7 @@ pro gsfit_readtb,datafile,maps
             max_data=max(map.data,min=min_data)
             data_range=max_data-min_data
             map.RMS=max_data/(a.a+a.b*map.freq)
-            map.data=map.data+map.rms*randomn(seed,sz[1],sz[2])
+;            map.data=map.data+map.rms*randomn(seed,sz[1],sz[2])
             maps[f,p,t]=map
           endfor
         endfor
@@ -99,7 +100,7 @@ pro gsfit_readtb,datafile,maps
     ;temporary
     if maps[0].datatype eq 'Brightness Temperature' then begin
       for i=0, n_elements(maps)-1 do maps[i].id=strreplace(maps[i].id,'Tb','')
-      maps[*].dataunit='sfu'
+      maps[*].dataunits='sfu'
       maps[*].datatype='Flux'
       sz=size(maps[0].data)
       dim=size(maps,/dim)
@@ -116,6 +117,6 @@ pro gsfit_readtb,datafile,maps
         endfor
       endfor  
     endif  
-    
   endif  
+  if valid_map(datafile) then datafile=temporary(maps)
 end  

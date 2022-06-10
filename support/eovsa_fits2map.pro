@@ -51,19 +51,21 @@ function eovsa_fits2map,files,_extra=_extra
  if ~tag_exist(dummy_map,'freq')then return,!null
  if ~tag_exist(dummy_map,'time')then return,!null
  has_rms=tag_exist(dummy_map,'rms')
- add_prop,dummy_map,dimensions=dimensions
- add_prop,dummy_map,datatype='Brightness Temperature'
- add_prop,dummy_map,dataunit='K'
+ add_prop,dummy_map,dimensions=dimensions,/rep
+ add_prop,dummy_map,datatype='Brightness Temperature',/rep
+ add_prop,dummy_map,dataunits='K,',/rep
  if ~has_rms then add_prop,dummy_map,rms=0.0
+ add_prop,dummy_map,rmsunits='K',/rep
  dummy_map.data=!values.f_nan
  dummy_map.ID='Missing'
  maps=replicate(dummy_map,nfiles)
  for i=0,nfiles-1 do begin
   vla_fits2map, files[i], amap
-  add_prop,amap,dimensions=dimensions
-  add_prop,amap,datatype='Brightness Temperature'
-  add_prop,amap,dataunit='K'
+  add_prop,amap,dimensions=dimensions,/rep
+  add_prop,amap,datatype='Brightness Temperature',/rep
+  add_prop,amap,dataunits='K',/rep
   if ~has_rms then add_prop,amap,rms=0.0
+  add_prop,amap,rmsunits='K',/rep
   maps[i]=amap
  end
  return,eovsa_maps2gsfit(maps,_extra=_extra)
