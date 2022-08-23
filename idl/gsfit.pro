@@ -14,7 +14,7 @@ function gsfit_libinfo,libpath,getlib=getlib
                 
        else: begin 
               unix_dir=str_replace(file_dirname((ROUTINE_INFO('gsfit',/source)).path,/mark),'idl','unix')
-              libpath=unix_dir+'fit_Spectrum_Kl.so'
+              libpath=unix_dir+'/fit_Spectrum_Kl.so'
               if ~file_test(libpath) then begin
                makefile=unix_dir+'makefile'
                if makefile ne '' then begin
@@ -23,7 +23,7 @@ function gsfit_libinfo,libpath,getlib=getlib
                  spawn, 'rm *.o',exit_status=exit_status
                  spawn, 'make',exit_status=exit_status
                  cd,cdr
-                 libpath=unix_dir+'fit_Spectrum_Kl.so'
+                 libpath=unix_dir+'/fit_Spectrum_Kl.so'
                  if ~file_test(libpath) then message,'The attemp to make a sharable library failed, not able to go on....'
                endif
               endif
@@ -37,7 +37,7 @@ function gsfit_libinfo,libpath,getlib=getlib
       IF Error_status NE 0 THEN BEGIN
         ;try to change case
         get_function=!version.os_family eq 'Windows'?strlowcase(get_function):strupcase(get_function)
-        message,'Fit library symbole case mismatxh, trying to change it...',/cont
+        message,'Fit library symbole case mismatch, trying to change it...',/cont
         CATCH, /CANCEL
       ENDIF
 
