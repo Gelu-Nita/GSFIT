@@ -1,2 +1,3 @@
 gsfitpath=getenv('SSW')+path_sep()+'packages'+path_sep()+'gsfit'
 ssw_path,gsfitpath
+setenv,'gsfitpath='+gsfitpath
