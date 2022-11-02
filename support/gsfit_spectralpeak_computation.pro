@@ -1,6 +1,6 @@
 pro gsfit_spectralpeak_computation,maps
 if ~tag_exist(maps,'header') then begin
-  message,'Header structure expected to contain the frequency list is missing from the map structure!',/cont
+  message,'Header structure expected to contain the frequency list is missing from the map structure!',/info
   return
 endif
 

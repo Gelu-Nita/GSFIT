@@ -4,5 +4,5 @@ if found then begin
   tmp=struct.(i)
   struct=rem_tag(struct,old_tag_name)
   struct=add_tag(struct,tmp,new_tag_name)
-endif else message,strupcase(old_tag_name)+': no such tag found, nothing to replace!',/cont
+endif else message,strupcase(old_tag_name)+': no such tag found, nothing to replace!',/info
 end

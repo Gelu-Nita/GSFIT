@@ -19,10 +19,10 @@ pro gsfit_readtb,datafile,maps
   if valid_map(eomaps) then begin
     if tag_exist(eomaps,'datatype') then begin
     if not ((eomaps[0].datatype eq 'Brightness Temperature') or (eomaps[0].datatype eq 'Flux')) then begin
-      message,'Error: The restored maps are not brightness temperature or flux maps,operation aborted!',/cont
+      message,'Error: The restored maps are not brightness temperature or flux maps,operation aborted!',/info
       return
     endif
-    endif else message,'WARNING: The restored maps are not registered as brightness temperature maps, proceed with caution!',/cont
+    endif else message,'WARNING: The restored maps are not registered as brightness temperature maps, proceed with caution!',/info
     maps=temporary(eomaps)
     sz=size(maps)
     if sz[0] eq 1 then maps=reform(maps,sz[1],1,1)
@@ -35,7 +35,7 @@ pro gsfit_readtb,datafile,maps
     if tag_exist(maps,'dimensions') then begin
       dimensions=maps[0].dimensions
       if n_elements(dimensions) ne n_elements(dim) then begin
-        message,'Error: Map array dimensions do not match the dimensions tag, operation aborted!',/cont
+        message,'Error: Map array dimensions do not match the dimensions tag, operation aborted!',/info
         return
       endif
        case n_elements(dim) of

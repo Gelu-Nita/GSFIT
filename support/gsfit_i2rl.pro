@@ -1,29 +1,29 @@
 function gsfit_i2rl,maps,_extra=_extra
 if size(maps,/tname) ne 'STRUCT' then begin
-  message,'Expected maps structure argument missing!',/cont
+  message,'Expected maps structure argument missing!',/info
   return,!null
 endif
 if ~tag_exist(maps,'datamaps') then begin
-  message,'Expected DATAMAPS tag missing!',/cont
+  message,'Expected DATAMAPS tag missing!',/info
   return,!null
 endif
 
 dummy_map=maps.datamaps[0]
 if ~valid_map(dummy_map) then begin
-  message,'The input argument does not contain any valid map structure!',/cont
+  message,'The input argument does not contain any valid map structure!',/info
   return,!null
 endif
 dimensions=['Freq','Pol','Time']
 if ~tag_exist(dummy_map,'stokes')then begin
-  message,'Expected STOKES tag missing!',/cont
+  message,'Expected STOKES tag missing!',/info
   return,!null
 endif
 if ~tag_exist(dummy_map,'freq')then begin
-  message,'Expected FREQ tag missing!',/cont
+  message,'Expected FREQ tag missing!',/info
   return,!null
 endif
 if ~tag_exist(dummy_map,'time')then begin
-  message,'Expected TIME tag missing!',/cont
+  message,'Expected TIME tag missing!',/info
   return,!null
 endif
 dummy_map.id='GSFIT Flux'
@@ -53,7 +53,7 @@ case sz[0] of
    ntime=sz[3]
   end  
   else: begin
-         message,'Unxpected number of dimensions for the DATAMAPS tag!',/cont
+         message,'Unxpected number of dimensions for the DATAMAPS tag!',/info
          return,!null
         end 
 endcase
@@ -139,7 +139,7 @@ parms[*,0,where(names eq 'EMIN')]=rinput[where(rnames eq 'E_MIN')]
 rowdata=make_array([npix,fastcode.pixdim],/float)
 for t=0, ntime-1 do begin
  t0=systime(/s)
- message,string(t+1,ntime,format="('Computing time frame #',i0,' out of ',i0)"),/cont
+ message,string(t+1,ntime,format="('Computing time frame #',i0,' out of ',i0)"),/info
  for k=0,n_tags(pmatch)-1 do begin
   if pmatch.(k).fitidx ne -1 then begin
    parms[*,0,pmatch.(k).parmsidx]=(maps.(pmatch.(k).fitidx).data)[*,*,t]
@@ -150,7 +150,7 @@ for t=0, ntime-1 do begin
  res=execute(fastcode.execute)
  rlmaps[*,0,t].data=reform(rowdata[*,*,0,0],Nx,Ny,Nfreq)
  rlmaps[*,1,t].data=reform(rowdata[*,*,1,0],Nx,Ny,NFreq)
- message,string(systime(/s)-t0,format="('Time frame computation performed in ',f5.2,' seconds')"),/cont
+ message,string(systime(/s)-t0,format="('Time frame computation performed in ',f5.2,' seconds')"),/info
 end
 res=maps.datamaps.data-total(rlmaps.data,4)
 rlmaps[*,0,*].data+=reform(res/2,nx,ny,nfreq,1,ntime)

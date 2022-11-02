@@ -30,7 +30,7 @@ function eovsa_maps2gsfit,maps_in,flux_threshold=flux_threshold,rms_mask=rms_mas
   endif
   
   if ~file_exist(maps_in) then begin
-    message, 'A valid map structure or a filename of an IDL file containing such structure is expected! Operation abortd!',/cont
+    message, 'A valid map structure or a filename of an IDL file containing such structure is expected! Operation abortd!',/info
     return,!null
   endif
   ;restores brightness temperature maps and convert them to flux maps
@@ -53,26 +53,26 @@ function eovsa_maps2gsfit,maps_in,flux_threshold=flux_threshold,rms_mask=rms_mas
 format_maps: 
 
 if ~valid_map(maps) then begin
-  message, 'Error: Restored data is not a valid map structure, operation aborted!',/cont
+  message, 'Error: Restored data is not a valid map structure, operation aborted!',/info
  return,!null
 endif
   
 ;if tag_exist(maps,'datatype') then begin
 ;  if not ((maps[0].datatype eq 'Brightness Temperature') or (maps[0].datatype eq 'Flux')) then begin
-;    message,'Error: The restored maps are not registered as brightness temperature or flux maps,operation aborted!',/cont
+;    message,'Error: The restored maps are not registered as brightness temperature or flux maps,operation aborted!',/info
 ;    return,!null
 ;  endif
 ;endif else begin
-;  message,'WARNING: The restored maps are not registered as brightness temperature or flux maps. Formatting operation aborted!',/cont
+;  message,'WARNING: The restored maps are not registered as brightness temperature or flux maps. Formatting operation aborted!',/info
 ;  return,maps
 ;endelse
 
 if tag_exist(maps,'datatype') then begin
   if not ((maps[0].datatype eq 'Brightness Temperature') or (maps[0].datatype eq 'Flux')) then begin
-    message,'Error: The restored maps are not brightness temperature or flux maps,operation aborted!',/cont
+    message,'Error: The restored maps are not brightness temperature or flux maps,operation aborted!',/info
     return,!null
   endif
-endif else message,'WARNING: The restored maps are not registered as brightness temperature maps, proceed with caution!',/cont
+endif else message,'WARNING: The restored maps are not registered as brightness temperature maps, proceed with caution!',/info
 maps=temporary(maps)
 sz=size(maps)
 if sz[0] eq 1 then maps=reform(maps,sz[1],1,1)

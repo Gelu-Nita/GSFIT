@@ -430,16 +430,16 @@ pro gsfitcp_abort
     active=0
     if code eq 1 then begin
       active+=1
-      message,strcompress(string(id,format="('Working on aborting the active task on Bridge # ', g0,', please wait....')")),/cont
+      message,strcompress(string(id,format="('Working on aborting the active task on Bridge # ', g0,', please wait....')")),/info
       allbridges[i]->Abort
       id=allbridges[i]->GetVar('id')
-      message,strcompress(string(id,format="('Bridge # ', g0,' execution aborted on user request!')")),/cont
+      message,strcompress(string(id,format="('Bridge # ', g0,' execution aborted on user request!')")),/info
     endif
   end
-  if active eq 0 then message, 'No active tasks, nothing to be aborted!',/cont else $
-  message,'All active tasks aborted on user request!',/cont
+  if active eq 0 then message, 'No active tasks, nothing to be aborted!',/info else $
+  message,'All active tasks aborted on user request!',/info
   gsfitcp_flush_queue
-  message,'All pending tasks have been deleted from memory on user request!',/cont
+  message,'All pending tasks have been deleted from memory on user request!',/info
   gsfitcp_status
 end
 
@@ -449,8 +449,8 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
   if n_elements(quiet) gt 0 then begin
     cpquiet=keyword_set(quiet)
     case cpquiet of
-      0: message,'Run-time progress report messages turned on! Use "IDL> gsfitcp,/quiet" to turn them off.',/cont
-      else:  message,'Run-time progress report messages turned off! Use "IDL> gsfitcp, quiet=0" to turn them on.',/cont
+      0: message,'Run-time progress report messages turned on! Use "IDL> gsfitcp,/quiet" to turn them off.',/info
+      else:  message,'Run-time progress report messages turned off! Use "IDL> gsfitcp, quiet=0" to turn them on.',/info
     endcase
   endif
   if keyword_set(status) then begin
@@ -477,7 +477,7 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
     return
   endif
   if N_PARAMS() eq 0 and n_elements(quiet) eq 0 then begin
-    message,'For a detailed description visit http://www.ovsa.njit.edu/wiki/index.php/GSFITCP_Help, or use one of the folowing calling sequences:',/cont
+    message,'For a detailed description visit http://www.ovsa.njit.edu/wiki/index.php/GSFITCP_Help, or use one of the folowing calling sequences:',/info
     print,'% IDL-> gsfitcp, taskfilename; to provide a path to a stored GSFIT task structure
     print,'% IDL-> gsfitcp, taskstructure; to provide an already restored GSFIT task structure
     print,'% IDL-> gsfitcp, nthreads; to set,increase, or decrease the number of ashyncronious threads to be used
@@ -488,7 +488,7 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
     print,'% IDL-> gsfitcp, /flush; to flush the pending task queue
     print,'% IDL-> gsfitcp, /abort; to abort all active tasks and flush the pending task queue
     print,'% IDL-> gsfitcp, /exit; to abort all active tasks, flush the pending task queue, and exit the application
-    message,'% Any logical combination of the arguments and keywords listed above should result in a valid single-line calling sequence',/cont
+    message,'% Any logical combination of the arguments and keywords listed above should result in a valid single-line calling sequence',/info
   endif
 
   if is_number(cp_input) then nbridges=temporary(cp_input)
@@ -521,11 +521,11 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
                          endfor
                          obj_destroy,osav
                         if size(cp_input,/tname) ne 'STRUCT' then begin
-                          message,'unexpected file content',/cont
+                          message,'unexpected file content',/info
                           return
                         endif else goto,cpstruct
                        endif else begin
-                        message,cp_input+': the task fileme argument provided is not avalid path on thismachine',/cont
+                        message,cp_input+': the task fileme argument provided is not avalid path on thismachine',/info
                         return
                        endelse
                       end
@@ -542,17 +542,17 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
                                 tag_exist(cp_input, 'DATAPATH') and $
                                 tag_exist(cp_input, 'GET_FUNCTION')
                         if ~cpvalid then begin
-                          message,'provided cp_input argument is not a valid gsfit command prompt input structure',/cont
+                          message,'provided cp_input argument is not a valid gsfit command prompt input structure',/info
                           return  
                         endif else cpinput=cp_input   
                       end     
             else: begin 
-                    message,'No valid cp_input argument provided',/cont
+                    message,'No valid cp_input argument provided',/info
                     return
                   end  
           endcase
           if ~file_exist(cpinput.datapath) then begin
-            message,'No valid data file path provided! Plese manually select a valid data file to cntinue',/cont
+            message,'No valid data file path provided! Plese manually select a valid data file to cntinue',/info
             cpinput.datapath=dialog_pickfile(filter='*.sav',title='Please select a filename containing valid GSFIT data input structure')
             if ~file_exist(cpinput.datapath) then begin
               message,['The attempt to replace the data path failed. Sorry, I cannot continue from here!',' Please manually fix the datapath tag in the cpinput structure and try again.'],/info
@@ -565,6 +565,6 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
 ;END OF CP_INPUT ARGUMENT PROVIDED SECTION
     
   if keyword_set(start) then begin
-    if size(cpinput,/tname) eq 'STRUCT' then gsfitcp_start else message,'No cpinput string or structure argument provided. Please use "gsfitcp, cpinput" to provide one.',/cont
+    if size(cpinput,/tname) eq 'STRUCT' then gsfitcp_start else message,'No cpinput string or structure argument provided. Please use "gsfitcp, cpinput" to provide one.',/info
   endif
 end

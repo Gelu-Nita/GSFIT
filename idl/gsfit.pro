@@ -37,7 +37,7 @@ function gsfit_libinfo,libpath,getlib=getlib
       IF Error_status NE 0 THEN BEGIN
         ;try to change case
         get_function=!version.os_family eq 'Windows'?strlowcase(get_function):strupcase(get_function)
-        message,'Fit library symbole case mismatch, trying to change it...',/cont
+        message,'Fit library symbole case mismatch, trying to change it...',/info
         CATCH, /CANCEL
       ENDIF
 
