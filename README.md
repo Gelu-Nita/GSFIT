@@ -14,9 +14,10 @@ https://git-scm.com/
 ```bash
 rm -rf gsfit
 git clone https://github.com/Gelu-Nita/GSFIT gsfit
+logout
 ```
 
-#### Add GSFIT to your SSW_INSTR list by editig the SSWIDL script
+#### Add GSFIT to your SSW_INSTR list by editig the appropriate SSWIDL script
 
 NOTE: GSFIT relies on some functionality that is part of the GX_SIMULATOR package. 
 To ensure proper functionality, you must also install it following the instructions from 
