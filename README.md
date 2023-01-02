@@ -14,7 +14,6 @@ https://git-scm.com/
 ```bash
 rm -rf gsfit
 git clone https://github.com/Gelu-Nita/GSFIT gsfit
-logout
 ```
 
 #### Add GSFIT to your SSW_INSTR list by editig the appropriate SSWIDL script
