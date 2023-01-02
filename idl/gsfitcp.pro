@@ -481,7 +481,7 @@ pro gsfitcp,cp_input,nbridges,start=start,status=status,out=out,quiet=quiet,abor
     print,'% IDL-> gsfitcp, taskfilename; to provide a path to a stored GSFIT task structure
     print,'% IDL-> gsfitcp, taskstructure; to provide an already restored GSFIT task structure
     print,'% IDL-> gsfitcp, nthreads; to set,increase, or decrease the number of ashyncronious threads to be used
-    print,'% IDL-> gsfitcp, out=out,log; to change the default "gsfitcp.log" path for run-time logging of the results.
+    print,'% IDL-> gsfitcp, out=out; to change the default "gsfitcp.log" path for run-time logging of the results.
     print,'% IDL-> gsfitcp, /status; to report the status of the application
     print,'% IDL-> gsfitcp, /quiet; to inhibit automatic printing of progress report messages at run-time
     print,'% IDL-> gsfitcp, /start; to start processing the task queue
