@@ -704,7 +704,7 @@ pro gsfitview_display_statistics,state,save=save
     if keyword_set(colapse) then begin
       plot,loc,total(h,2)>1,/xsty,xtitle=xtitle,ytitle=ytitle,ylog=loghist,psym=10,xlog=logbins
     endif else begin
-      spectro_plot,transpose(h),anytim(time),loc,/xsty,/ysty,ytitle=xtitle,xtitle='Time',ylog=logbins,zlog=loghist,color=255,$
+     spectro_plot,transpose(h),anytim(time),loc,/xsty,/ysty,ytitle=xtitle,xtitle='Time',ylog=logbins,zlog=loghist,color=255,$
         title=selection+' Histograms',charsize=charsize,charthick=charthick
       if over2d then begin
         outplot,time,lc,thick=1,psym=2
