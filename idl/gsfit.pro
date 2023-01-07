@@ -838,6 +838,7 @@ pro gsfit_event,event
                 state.xroi->Remove,/all
                 state.yroi->Remove,/all
               endelse
+              device,set_graphics_function=3
               draw=1
             end
             else:     begin
