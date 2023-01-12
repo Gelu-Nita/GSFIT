@@ -14,7 +14,7 @@ function gsfit_libinfo,libpath,getlib=getlib
                 
        else: begin 
               unix_dir=str_replace(file_dirname((ROUTINE_INFO('gsfit',/source)).path,/mark),'idl','unix')
-              libpath=unix_dir+'/fit_Spectrum_Kl.so'
+              libpath=unix_dir+'fit_Spectrum_Kl.so'
               if ~file_test(libpath) then begin
                makefile=unix_dir+'makefile'
                if makefile ne '' then begin
@@ -23,7 +23,7 @@ function gsfit_libinfo,libpath,getlib=getlib
                  spawn, 'rm *.o',exit_status=exit_status
                  spawn, 'make',exit_status=exit_status
                  cd,cdr
-                 libpath=unix_dir+'/fit_Spectrum_Kl.so'
+                 libpath=unix_dir+'fit_Spectrum_Kl.so'
                  if ~file_test(libpath) then message,'The attemp to make a sharable library failed, not able to go on....'
                endif
               endif
