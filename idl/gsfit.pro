@@ -143,7 +143,7 @@ function gsfit_libinfo,libpath,getlib=getlib
   return,info
 end
 
-function gsfit_info2header,info,freq=freq,time=time,refmap=refmap
+function gsfit_info2header,info,freq=freq,pol=pol,time=time,refmap=refmap
   parnames=strcompress(info.parms_out.name,/rem)
   units=strcompress(info.parms_out.unit,/rem)
   errparnames='err'+parnames
@@ -155,9 +155,10 @@ function gsfit_info2header,info,freq=freq,time=time,refmap=refmap
     errunits[chisq]='sfu'
   endif
   header={INFO:INFO,UNITS:UNITS, ERRUNITS:ERRUNITS, PARNAMES:PARNAMES, ERRPARNAMES:ERRPARNAMES}
-  header=n_elements(time) gt 0? add_tag(header,time,'time'):header
-  header=n_elements(freq) gt 0? add_tag(header,freq,'freq'):header
-  header=valid_map(refmap) ? add_tag(header,refmap,'refmap'):header
+  header=n_elements(time) gt 0? rep_tag_value(header,time,'time'):header
+  header=n_elements(pol) gt 0? rep_tag_value(header,pol,'pol'):header
+  header=n_elements(freq) gt 0? rep_tag_value(header,freq,'freq'):header
+  header=valid_map(refmap) ? rep_tag_value(header,refmap,'refmap'):header
   return,header
 end
 
@@ -203,19 +204,65 @@ if keyword_set(fastcode_update) and tag_exist(state.header.info,'fastcode') and 
   arcsec2cm=7.27d7
   for i=0,n_elements(names)-1 do begin
     case names[i] of
-      'DS':parms[i]=rinput[where(rnames eq 'PIXELAREA')]*(arcsec2cm^2)
-      'DR':parms[i]=rinput[where(rnames eq 'LOSDEPTH')]*arcsec2cm
-      'T_0':parms[i]=pinput[where(pnames eq 'T_E')]*1e6
-      'EMIN':parms[i]=rinput[where(rnames eq 'E_MIN')]
-      'EMAX':parms[i]=pinput[where(pnames eq 'E_MAX')]
-      'DELTA1':parms[i]=pinput[where(pnames eq 'DELTA')]
-      'N_0':parms[i]=pinput[where(pnames eq 'N_TH')]*1d9
-      'N_B':parms[i]=pinput[where(pnames eq 'N_NTH')]*1d7
-      'B':parms[i]=pinput[where(pnames eq 'B')]*100
-      'THETA':parms[i]=pinput[where(pnames eq 'THETA')]
-      'F_MIN':parms[i]=freq
-      'DF':parms[i]=df
-      'DIST_ANG':parms[i]=ninput[where(nnames eq 'ANGULARCODE')]
+      'DS':begin 
+             idx=where(rnames eq 'PIXELAREA',count)
+             if count then parms[i]=rinput[idx]*(arcsec2cm^2)
+           end  
+      'DR':begin 
+             idx=where(rnames eq 'LOSDEPTH',conut)
+             if count then parms[i]=rinput[idx]*arcsec2cm
+           end  
+      'T_0':begin 
+              idx=where(pnames eq 'T_E',count)
+              if count then parms[i]=pinput[idx]*1e6
+            end   
+      'EMIN':begin 
+              idx=where(rnames eq 'E_MIN',count)
+              if count then parms[i]=rinput[idx]
+             end  
+      'EMAX':begin 
+               idx=where(pnames eq 'E_MAX',count)
+               if count then parms[i]=pinput[idx]
+             end 
+      'DELTA1':begin 
+                idx=where(pnames eq 'DELTA',count)
+                if count then begin
+                  parms[i]=pinput[idx]
+                  parms[where(names eq 'DIST_E')]=3
+                endif
+               end
+      'KAPPA':begin
+                idx=where(pnames eq 'KAPPA',count)
+                if count then begin
+                  parms[i]=pinput[idx]
+                  parms[where(names eq 'DIST_E')]=6
+                endif
+               end            
+      'N_0': begin 
+              if count then parms[i]=pinput[where(pnames eq 'N_TH')]*1d9
+             end 
+      'N_B':begin 
+              idx=where(pnames eq 'N_NTH',count)
+              if count then parms[i]=pinput[idx]*1d7
+            end  
+      'B':begin 
+           idx=where(pnames eq 'B',count)
+           if count then parms[i]=pinput[idx]*100
+          end 
+      'THETA':begin 
+                idx=where(pnames eq 'THETA',count)
+                if count then parms[i]=pinput[idx]
+              end  
+      'F_MIN':begin
+                if count then parms[i]=freq[0]
+              end  
+      'DF':   begin
+               if count then parms[i]=df
+              end  
+      'DIST_ANG': begin 
+                   idx=where(nnames eq 'ANGULARCODE',idx)
+                   if count then parms[i]=ninput[idx]
+                  end 
       else:
     endcase
   endfor
@@ -368,18 +415,54 @@ pro gsfit_draw,state,draw
         oplot,freq[fit.fmin:fit.fmax],specfit,color=color[pol_idx],thick=2
          
         if fastcode_over[0] eq 2 then begin 
+            gsfit_fastcode_update,state,1
             parms=double(state.header.info.fastcode.parms.value)
             names=strupcase(strcompress(state.header.info.fastcode.parms.name,/rem))
             pnames=tag_names(fit)
-            for i=0,n_elements(names)-1 do begin
-              case names[i] of
-                'T_0':parms[i]=fit.(where(pnames eq 'T_E'))
-                'EMAX':parms[i]=fit.(where(pnames eq 'E_MAX'))
-                'DELTA1':parms[i]=fit.(where(pnames eq 'DELTA'))
-                'N_0':parms[i]=fit.(where(pnames eq 'N_TH'))
-                'N_B':parms[i]=fit.(where(pnames eq 'N_NTH'))
-                'B':parms[i]=fit.(where(pnames eq 'B'))
-                'THETA':parms[i]=fit.(where(pnames eq 'THETA'))
+;               CATCH, Error_status
+;               IF Error_status NE 0 THEN BEGIN
+;                  PRINT, 'Error index: ', Error_status
+;                  PRINT, 'Error message: ', !ERROR_STATE.MSG
+;                  CATCH, /CANCEL
+;               ENDIF
+            for i=0,n_elements(pnames)-1 do begin
+              case pnames[i] of
+                'T_E':begin
+                  te_idx=where(names eq 'T_0',count)
+                  if count then parms[te_idx]=fit.(i)*1e6
+                end
+                'E_MAX':begin
+                  emax_idx=where(names eq 'EMAX',count)
+                  if count then parms[emax_idx]=fit.(i)
+                end
+                'DELTA':begin
+                  delta_idx=where(names eq 'DELTA1',count)
+                  if count then parms[delta_idx]=fit.(i)
+                  en_idx=where(names eq 'DIST_E',count)
+                  if count then parms[en_idx]=3
+                end
+                'KAPPA':begin
+                  kappa_idx=where(names eq 'KAPPA',count)
+                  if count then parms[kappa_idx]=fit.(i)
+                  en_idx=where(names eq 'DIST_E',count)
+                  if count then parms[en_idx]=6
+                end
+                'N_TH':begin
+                  nth_idx=where(names eq 'N_0',count)
+                  if count then parms[nth_idx]=fit.(i)
+                end
+                'N_B':begin
+                  nb_idx=where(names eq 'N_B',count)
+                  if count then parms[nb_idx]=fit.(i)
+                end
+                'B':begin
+                  b_idx=where(names eq 'B',count)
+                  if count then parms[b_idx]=fit.(i)
+                end
+                'THETA':begin
+                  theta_idx=where(names eq 'THETA',count)
+                  if count then parms[theta_idx]=fit.(i)
+                end
                 else:
               endcase
             endfor
@@ -406,14 +489,16 @@ pro gsfit_draw,state,draw
          y=0.4
          tags=tag_names(fit)
          for k=0,n_elements(state.header.parnames)-1 do begin
-          idx=where(tags eq strupcase(state.header.parnames[k]))
-          erridx=where(tags eq strupcase(state.header.errparnames[k]))
-          case state.header.parnames[k] of
-            'CHISQR':begin
-                      parmstr=str_replace(str_replace(str_replace(strcompress(string(state.header.parnames[k],fit.(idx),state.header.errparnames[k],fit.(erridx),state.header.errunits[k],format="(a10,'=',g16.3,' (Avg. ',a10,'=',g16.3,a10,')')")),'+0','+'),'+0','+'),'e+','x10^')
-                     end
-          else:parmstr=str_replace(str_replace(str_replace(str_replace(str_replace(strcompress(string(state.header.parnames[k],fit.(idx),fit.(erridx),state.header.units[k],format="(a10,'=(',g16.3,'!N!9+!3',g16.3,'!N)',a10)")),'+0','+'),'+0','+'),'^','!E'),'e+','x10!U'),'e-','x10!U-')
-          endcase
+          idx=where(tags eq strcompress(strupcase(state.header.parnames[k]),/rem),count1)
+          erridx=where(tags eq strcompress(strupcase(state.header.errparnames[k]),/rem),count2)
+          if count1 gt 0 and count2 gt 0 then begin
+            case state.header.parnames[k] of
+              'CHISQR':begin
+                        parmstr=str_replace(str_replace(str_replace(strcompress(string(state.header.parnames[k],fit.(idx),state.header.errparnames[k],fit.(erridx),state.header.errunits[k],format="(a10,'=',g16.3,' (Avg. ',a10,'=',g16.3,a10,')')")),'+0','+'),'+0','+'),'e+','x10^')
+                       end
+            else:parmstr=str_replace(str_replace(str_replace(str_replace(str_replace(strcompress(string(state.header.parnames[k],fit.(idx),fit.(erridx),state.header.units[k],format="(a10,'=(',g16.3,'!N!9+!3',g16.3,'!N)',a10)")),'+0','+'),'+0','+'),'^','!E'),'e+','x10!U'),'e-','x10!U-')
+            endcase
+          end
           gx_plot_label,0.01,y,parmstr,/ylog,/xlog,color=255,charsize=1.2*charsize,charthick=2
           y-=0.05
          endfor
@@ -567,11 +652,19 @@ pro gsfit_sendfittask,bridge,state,task
   spec_out=dblarr(npix,nfreq,2)
   
   widget_control,state.lib.wNinput,get_value=ninput
-  ninput[2:3]=[npix,nfreq]
-  ninput[5]=(npol eq 1)?1:2
+  idx=where(STRCOMPRESS(STRUPCASE(state.header.info.nparms.name),/REM) eq 'NPIX',count)
+  if count then ninput[idx]=npix
+  idx=where(STRCOMPRESS(STRUPCASE(state.header.info.nparms.name),/REM) eq 'NFREQ',count)
+  if count then ninput[idx]=nfreq
+  idx=where(STRCOMPRESS(STRUPCASE(state.header.info.nparms.name),/REM) eq 'NFREQ',count)
+  if count then ninput[idx]=nfreq
+  idx=where(STRCOMPRESS(STRUPCASE(state.header.info.nparms.name),/REM) eq 'STOKESDATA',count)
+  if count then ninput[idx]=nfreq
+  ninput[idx]=(npol eq 1)?1:2
   widget_control,state.lib.wNinput,set_value=ninput
   widget_control,state.lib.wRinput,get_value=rinput
-  rinput[3]=dx*dy
+  idx=where(STRCOMPRESS(STRUPCASE(state.header.info.rparms.name),/REM) eq 'PIXELAREA',count)
+  rinput[idx]=dx*dy
   widget_control,state.lib.wRinput,set_value=rinput
   widget_control,state.lib.wRMS,get_value=rmsweight
   widget_control,state.lib.wGuessParms,get_value=GuessParms
@@ -978,16 +1071,14 @@ pro gsfit_event,event
                       pol=reform(maps[0,*,0].stokes)
                       time=reform(maps[0,0,*].time)
                       ptr_free,state.pmaps
-                      state.pmaps=ptr_new(temporary(maps))     
+                      state.pmaps=ptr_new(temporary(maps)) 
+                      refmap=(*state.pmaps)[0,0]    
                       header=state.header
-                      header=rem_tag(header,['freq','pol','time','refmap'])
-                      header=add_tag(header,freq,'freq')
-                      header=add_tag(header,pol,'pol')
-                      header=add_tag(header,time,'time')
-                      header=add_tag(header,(*state.pmaps)[0,0],'refmap')
-                      state=rem_tag(state,'header')
-                      state=add_tag(state,header,'header')
-                    
+                      header=rep_tag_value(header,freq,'freq')
+                      header=rep_tag_value(header,pol,'pol')
+                      header=rep_tag_value(header,time,'time')
+                      header=rep_tag_value(header,(*state.pmaps)[0,0],'refmap')
+                      state=rep_tag_value(state,header,'header')                 
                       xrange=get_map_xrange((*state.pmaps)[0])
                       xpix=xrange[0]+findgen(nx)*dx
                       yrange=get_map_yrange((*state.pmaps)[0])
@@ -1004,9 +1095,13 @@ pro gsfit_event,event
                       stokes=reform((*state.pmaps)[0,*,0].stokes)
                       widget_control,state.wpol,set_value=n_elements(stokes) eq 1 ?stokes:['I',stokes],sensitive=(n_elements(stokes) gt 1)
                       widget_control,state.lib.wNinput,get_value=ninput
-                      ninput[3]=n_elements(freq)
-                      ninput[4]=n_elements(stokes)
-                      ninput[5]=n_elements(stokes)
+                      nfreq_idx=where(strcompress(strupcase(state.header.info.nparms.name),/rem) eq 'NFREQ',count)
+                      if count ne 0 then ninput[nfreq_idx]=n_elements(freq)
+                      mode_idx=where(strcompress(strupcase(state.header.info.nparms.name),/rem) eq 'FITTINGMODE',count)
+                      if count ne 0 then ninput[mode_idx]=n_elements(n_elements(stokes))
+                      stokes_idx=where(strcompress(strupcase(state.header.info.nparms.name),/rem) eq 'STOKESDATA',count)
+                      if count ne 0 then ninput[stokes_idx]=n_elements(n_elements(stokes))
+
                       widget_control,state.lib.wNinput,set_value=ninput
                       
                       widget_control,state.wfreq, set_slider_max=maxfreq,set_value=0,sensitive=1
@@ -1264,7 +1359,9 @@ pro gsfit_event,event
                          skip_import:
                        end  
    state.wSelectTarget: begin
-                          libpath=dialog_pickfile(filter=(!version.os_family eq 'Windows')?'*.dll':'*.so',title='Please select a gxfit executable routine',path=file_dirname((ROUTINE_INFO('gsfit',/source)).path,/mark),/read)
+                          libpath=dialog_pickfile(filter=((!version.os_family eq 'Windows')?'*.dll':'*.so'),$
+                            title='Please select a gxfit executable routine',$
+                            path=(file_dirname(file_dirname((ROUTINE_INFO('gsfit',/source)).path,/mark),/mark))+((!version.os_family eq 'Windows')?'win':'unix'),/read)
                           if file_exist(libpath) then begin
                             info=gsfit_libinfo(libpath)
                             if n_elements(info) eq 0 then begin
@@ -1273,24 +1370,29 @@ pro gsfit_event,event
                             endif
                             newinfo:
                             fastcode_update=1
-                            if MATCH_STRUCT(state.header.info,info,/TYPE_ONLY) then begin
-                              state.header.info=info
-                              widget_control,state.lib.wNinput, set_value=info.nparms.value
-                              widget_control,state.lib.wRinput, set_value=info.rparms.value
-                              widget_control,state.lib.wGuessParms, set_value=info.parms_in.guess
-                              widget_control,state.lib.wMinParms, set_value=info.parms_in.min
-                              widget_control,state.lib.wMaxParms, set_value=info.parms_in.max
-                              widget_control,state.lib.wLibPath, set_value=info.path
-                              widget_control,state.lib.wrms, set_value=info.rms
-                            endif else begin
-                              header=state.header
-                              header=rep_tag_value(header,info,'info')
+;                            if MATCH_STRUCT(state.header.info,info,/TYPE_ONLY) then begin
+;                              state.header.info=info
+;                              widget_control,state.lib.wNinput, set_value=info.nparms.value
+;                              widget_control,state.lib.wRinput, set_value=info.rparms.value
+;                              widget_control,state.lib.wGuessParms, set_value=info.parms_in.guess
+;                              widget_control,state.lib.wMinParms, set_value=info.parms_in.min
+;                              widget_control,state.lib.wMaxParms, set_value=info.parms_in.max
+;                              widget_control,state.lib.wLibPath, set_value=info.path
+;                              widget_control,state.lib.wrms, set_value=info.rms
+;                            endif else begin
+;                              header=state.header
+;                              header=rep_tag_value(header,info,'info')
+                              if tag_exist(state.header,'freq') then freq=state.header.freq
+                              if tag_exist(state.header,'time') then time=state.header.time
+                              if tag_exist(state.header,'pol') then pol=state.header.pol
+                              if tag_exist(state.header,'refmap') then refmap=state.header.refmap
+                              header=gsfit_info2header(info,freq=freq,pol=pol,time=time,refmap=refmap)
                               state=rep_tag_value(state,header,'header')
                               wInputBase=widget_info(event.top,find_by_uname='InputBase')
                               gsfit_create_input_widgets,wInputBase,info,input_widgets=input_widgets
                               widget_control,state.lib.wLibPath, set_value=info.path
                               state=rep_tag_value(state,create_struct(input_widgets,'wLibPath',state.lib.wLibPath),'lib')
-                            end
+;                            end
                           endif
                         end   
    state.wAbort:begin
@@ -1397,24 +1499,30 @@ pro gsfit_event,event
                             answ=dialog_message('Invalid GSFIT settings file!')
                             return
                           endif
-                            if MATCH_STRUCT(state.header.info,info,/TYPE_ONLY) then begin
-                              state.header.info=info
-                              widget_control,state.lib.wNinput, set_value=info.nparms.value
-                              widget_control,state.lib.wRinput, set_value=info.rparms.value
-                              widget_control,state.lib.wGuessParms, set_value=info.parms_in.guess
-                              widget_control,state.lib.wMinParms, set_value=info.parms_in.min
-                              widget_control,state.lib.wMaxParms, set_value=info.parms_in.max
-                              widget_control,state.lib.wLibPath, set_value=info.path
-                              widget_control,state.lib.wrms, set_value=info.rms
-                            endif else begin
-                              header=state.header
-                              header=rep_tag_value(header,info,'info')
+;                            if MATCH_STRUCT(state.header.info,info,/TYPE_ONLY) then begin
+;                              state.header.info=info
+;                              widget_control,state.lib.wNinput, set_value=info.nparms.value
+;                              widget_control,state.lib.wRinput, set_value=info.rparms.value
+;                              widget_control,state.lib.wGuessParms, set_value=info.parms_in.guess
+;                              widget_control,state.lib.wMinParms, set_value=info.parms_in.min
+;                              widget_control,state.lib.wMaxParms, set_value=info.parms_in.max
+;                              widget_control,state.lib.wLibPath, set_value=info.path
+;                              widget_control,state.lib.wrms, set_value=info.rms
+;                            endif else begin
+;                              header=state.header
+;                              header=rep_tag_value(header,info,'info')
+;                              state=rep_tag_value(state,header,'header')
+                              if tag_exist(state.header,'freq') then freq=state.header.freq
+                              if tag_exist(state.header,'time') then time=state.header.time
+                              if tag_exist(state.header,'pol') then pol=state.header.pol
+                              if tag_exist(state.header,'refmap') then refmap=state.header.refmap
+                              header=gsfit_info2header(info,freq=freq,pol=pol,time=time,refmap=refmap)
                               state=rep_tag_value(state,header,'header')
                               wInputBase=widget_info(event.top,find_by_uname='InputBase')
                               gsfit_create_input_widgets,wInputBase,info,input_widgets=input_widgets
                               widget_control,state.lib.wLibPath, set_value=info.path
                               state=rep_tag_value(state,create_struct(input_widgets,'wLibPath',state.lib.wLibPath),'lib')
-                            end
+;                            end
                             fastcode_update=1
                             draw=1
                         endif
