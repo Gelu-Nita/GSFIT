@@ -260,10 +260,19 @@ pro gsfitview_event,event
                     draw=1
                    end 
    state.wTimeProfileOptions:draw=1
+   state.wCharsize:draw=1
+   state.wCharthick:draw=1
    state.wSpectralPlotOptions:draw=1
+   state.wBlackOnWhite:draw=1
    state.wpalette: begin
+                     tvlct,rgb_save,/get
+                     widget_control,state.wpalette,get_uvalue=rgb
+                     tvlct,rgb
                      xloadct,/silent,/block
-                     draw=1
+                     tvlct,rgb,/get
+                     tvlct,rgb_save
+                     widget_control,state.wpalette,set_uvalue=rgb
+                     draw=2
                    end    
    state.wopen: begin
                  file=dialog_pickfile(filter='*.sav',title='Select an IDL sav file containg a parmfit structure')
@@ -537,9 +546,6 @@ end
 
 pro gsfitview_display_statistics,state,save=save
  if ~ptr_valid(state.pmaps) then return
- charsize=1.2
- charthick=2
- 
  time=reform((*state.pmaps).datamaps[0,0,*].time)
  widget_control,state.wtime,get_value=time_idx
  pol_idx=(widget_info(state.wpol,/droplist_select)-1)>0
@@ -696,17 +702,31 @@ pro gsfitview_display_statistics,state,save=save
  ytitle=colapse?'Counts':'Time Frame'
  
   widget_control,state.wHist.plot,get_value=w
-  wset,w
+  wset,w 
+  tvlct,rgb_save,/get
+  widget_control,state.wPalette,get_uvalue=rgb
+  widget_control,state.wBlackOnWhite,get_value=BlackOnWhite
+  tvlct,rgb
+  psave=!p
+  xsave=!x
   !p.multi=0
- 
-
+  widget_control,state.wcharsize,get_value=charsize
+  widget_control,state.wcharthick,get_value=charthick
+  !p.charsize=charsize
+  !p.charthick=charthick
+  BlackOnWhite=BlackOnWhite[0]
+  if BlackOnWhite then gx_rgb_white2black
+  widget_control,state.wTimeProfileOptions,get_value=objTimePlotOptions
+  objTimePlotOptions->GetProperty,range=range,xrange=pxrange,yrange=pyrange,xlog=xlog,ylog=ylog
   
   if HistView eq 0 then begin
     if keyword_set(colapse) then begin
       plot,loc,total(h,2)>1,/xsty,xtitle=xtitle,ytitle=ytitle,ylog=loghist,psym=10,xlog=logbins
     endif else begin
      spectro_plot,transpose(h),anytim(time),loc,/xsty,/ysty,ytitle=xtitle,xtitle='Time',ylog=logbins,zlog=loghist,color=255,$
-        title=selection+' Histograms',charsize=charsize,charthick=charthick
+        title=selection+' Histograms',charsize=charsize,charthick=charthick,nticks=3, $
+        xrange=n_elements(pxrange) gt 0?anytim(time[pxrange]):minmax(anytim(time)),ymargin=[6,6]
+      plot_map_colorbar,minmax(h),log=loghist,charsize=charsize,cb_title='Counts'
       if over2d then begin
         outplot,time,lc,thick=1,psym=2
         uterrplot,time,lc-errlc,lc+errlc,thick=1
@@ -714,7 +734,8 @@ pro gsfitview_display_statistics,state,save=save
       outplot,time[[time_idx,time_idx]],logbins?10^!y.crange:!y.crange,linesty=2,color=250,thick=3
     endelse
    endif else begin
-      utplot,time,lc,thick=1,psym=2,/xsty,charsize=charsize,charthick=charthick,ylog=loghist,ytitle=xtitle,title=title,yrange=range
+      utplot,time,lc,thick=1,psym=2,/xsty,charsize=charsize,charthick=charthick,ylog=loghist,ytitle=xtitle,title=title,$
+        yrange=range, nticks=3, xrange=n_elements(pxrange) gt 0?anytim(time[pxrange]):minmax(anytim(time))
       uterrplot,time,lc-errlc,lc+errlc,thick=1
       outplot,time[[time_idx,time_idx]],loghist?10^!y.crange:!y.crange,linesty=2,color=250,thick=3
   endelse
@@ -731,13 +752,14 @@ pro gsfitview_display_statistics,state,save=save
     save,file,h,loc,ij,data_range,xroi,yroi,parmap,time,file=file
    endif
  endif
+ !p=psave
+ !x=xsave
+ tvlct,rgb_save
 end
 
 
 pro gsfitview_draw,state, draw=draw,_extra=_extra
  if ~ptr_valid(state.pmaps) or ~keyword_set(draw) then return
- charsize=1.2
- charthick=2
  geometry=widget_info(state.wDataMap,/geometry)
  sz=size((*state.pmaps).datamaps.data)
  widget_control,state.wdatamap,get_value=wdatamap
@@ -767,6 +789,19 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
  nfreqs=state.nfreqs
  ntimes=state.ntimes
  npols=state.npols
+ tvlct,rgb_save,/get
+ widget_control,state.wPalette,get_uvalue=rgb
+ widget_control,state.wBlackOnWhite,get_value=BlackOnWhite
+ tvlct,rgb
+ psave=!p
+ xsave=!x
+ !p.multi=0
+ widget_control,state.wcharsize,get_value=charsize
+ widget_control,state.wcharthick,get_value=charthick
+ !p.charsize=charsize
+ !p.charthick=charthick
+ BlackOnWhite=BlackOnWhite[0]
+ if BlackOnWhite then gx_rgb_white2black
 
  if npols eq 2 then begin
       if pol_idx eq 0 then begin
@@ -794,10 +829,6 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
 
  widget_control,state.wfreqlabel,set_value=strcompress(string(freq[freq_idx],format="(f5.2,' GHz ')"))+strcompress(string(freq_idx,format="(' [',i3,']')"),/rem)
  widget_control,state.wtimelabel,set_value=time[time_idx]+' '+strcompress(string(time_idx,format="(' [',i3,']')"),/rem)
-  rgb_curr=bytarr(3,256)
-  tvlct,rgb_curr,/get
-  psave=!p
-  !p.multi=0
   wset,wdatamap
   widget_control,state.wmapref,get_uvalue=refmaps
   refmap_idx=widget_info(state.wmapref,/droplist_select)
@@ -828,7 +859,9 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
         plot_map,refmap,title=refmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift,charsize=charsize,charthick=charthick
         plot_map,displaymap,/over,levels=level,/per,thick=3,color=255
     endelse
-  endif else  plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick
+  endif else  begin
+        plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick
+  endelse
   
   oplot,xpix[[i,i]],!y.crange,linesty=2,color=250,thick=3
   oplot,!x.crange,ypix[[j,j]],linesty=2,color=250,thick=3
@@ -858,7 +891,17 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
       plot_map,parmap,/over,levels=level,/per,thick=3,color=255
       frontmap=parmap
     endelse
-  endif else  plot_map,parmap,title=parmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick,dmin=dmin,dmax=dmax,log_scale=log_scale
+  endif else  begin
+      plot_map,parmap,title=parmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick,dmin=dmin,dmax=dmax,log_scale=log_scale
+;      default,bottom,0
+;      default,top,255
+;      ncolors=fix(top-bottom+1)
+;      prange=[min(parmap.data,/nan,max=m),m]
+;      if n_elements(dmin) ne 0 then prange[0]=dmin
+;      if n_elements(dmax) ne 0 then prange[1]=dmax
+;      cbar_range=keyword_set(log_scale) ? 10.^prange : prange
+;      plot_map_colorbar, cbar_range, bottom, ncolors, log=log_scale,charsize=!p.charsize,cb_title=parmap.dataunits
+  endelse
   
   oplot,xpix[[i,i]],!y.crange,linesty=2,color=250,thick=3
   oplot,!x.crange,ypix[[j,j]],linesty=2,color=250,thick=3
@@ -895,7 +938,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
       plot,freq,data_spectrum[i,j,*],xlog=xlog,ylog=ylog,xrange=pxrange,yrange=pyrange,psym=2,$
         xtitle='Frequency (GHz)',ytitle='Flux density [sfu/pixel]',title='Spectral Fit',ymargin=[6,6],/xsty,/ysty,charsize=charsize,charthick=charthick
       oploterr, freq, data_spectrum[i,j,*], err_spectrum[i,j,*]*2, psym=3;, hatlength=2, errcolor=255 
-      oplot,freq,fit_spectrum[i,j,*],color=150,thick=3
+      oplot,freq,fit_spectrum[i,j,*],color=BlackOnWhite?50:150,thick=3
       oplot,freq[[freq_idx,freq_idx]],10^!y.crange,linesty=2,color=250,thick=3
       if range eq 'Auto' then objSpectralPlotOptions->SetProperty,xrange=keyword_set(xlog)?10^!x.crange:!x.crange, yrange=keyword_set(ylog)?10^!y.crange:!y.crange
     endif else erase,0
@@ -931,8 +974,9 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
         CATCH, /CANCEL
       ENDIF
     
-      utplot,time,lc,ytitle=parmap.id,psym=3,title=parmap.id+' Evolution',/xsty,/ysty,ymargin=[6,6],ylog=ylog,xlog=xlog,xrange=pxrange,yrange=pyrange,charsize=charsize,charthick=charthick
-      outplot,time,lc,color=150,thick=3,psym=2
+      utplot,time,lc,ytitle=parmap.id,psym=3,title=parmap.id+' Evolution',/xsty,/ysty,$
+      ymargin=[6,6],ylog=ylog,xlog=xlog,xrange=pxrange,yrange=pyrange,charsize=charsize,charthick=charthick,nticks=3
+      outplot,time,lc,color=BlackOnWhite?50:150,thick=3,psym=2
       if errparm_index[0] gt 0 then begin
        uterrplot,time,lc-errlc,lc+errlc
       endif
@@ -940,7 +984,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
       good=where(lc,count)
       if count gt 0 then begin
         mom=moment(lc[good],mean=mean,sdev=sdev,/nan,/double)
-         outplot,minmax(time),mean[[0,0]]
+         outplot,minmax(time),median(lc[good])*[1,1];mean[[0,0]]
          outplot,minmax(time),mean+sdev[[0,0]],linesty=1
          outplot,minmax(time),mean-sdev[[0,0]],linesty=1
       endif
@@ -948,11 +992,10 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
       if range eq 'Auto' then objTimePlotOptions->SetProperty,xrange=keyword_set(xlog)?10^!x.crange:!x.crange, yrange=keyword_set(ylog)?10^!y.crange:!y.crange
     endif else erase,0 
   end
-  
   gsfitview_display_statistics,state,_extra=_extra
-  tvlct,rgb_curr
   !p=psave
-  
+  !x=xsave
+  tvlct,rgb_save
   winfo=widget_info(state.wbase,find_by_uname='info')
 
   cmdot = STRING([183B]) ; Middle dot
@@ -1092,9 +1135,13 @@ pro gsfitview,maps
     /bitmap,tooltip='Save Imported Fit Map Structure')    
   wRefmap= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('surface.bmp', subdirectory=subdirectory)),$
     /bitmap,tooltip='Import Reference Map')  
+  tvlct,rgb_save,/get
+  loadct,39
+  tvlct,rgb,/get
+  tvlct,rgb_save
   wPalette = widget_button( wToolbarBase, $
     value=gx_bitmap(filepath('palette.bmp', subdirectory=subdirectory)), $
-    /bitmap,tooltip='Change Color Table')  
+    /bitmap,tooltip='Change Color Table',uvalue=rgb)  
   
   wCursorBase=widget_base(wToolbarBase,/exclusive,/row)
   wCursor= WIDGET_BUTTON(wCursorBase, VALUE=gx_bitmap(filepath('scale_active.bmp', subdirectory=subdirectory)),$
@@ -1224,7 +1271,10 @@ pro gsfitview,maps
   wSpectralPlotOptions=cw_objPlotOptions(widget_base(plot_options_base,title='Spectral Plot Options'),uname=!version.os_family eq 'Windows'?'Spectral Plot Options':'',/xlog,/ylog)
   widget_control,wSpectralPlotOptions,get_value=objSpectralPlotOptions
   wTimeProfileOptions=cw_objPlotOptions(widget_base(plot_options_base,title='Time Plot Options'),uname=!version.os_family eq 'Windows'?'Time Plot Options':'')
-  
+  wDisplayOptionBase=widget_base(plot_options_base,/frame,/column)
+  wCharsize=cw_objfield(wDisplayOptionBase,value=2,label='Charsize ',xtextsize=4,xlabelsize=17,uname='charsize')
+  wCharthick=cw_objfield(wDisplayOptionBase,value=2,label='Charthick ',xtextsize=4,xlabelsize=17,uname='charthick')
+  wBlackOnWhite=cw_bgroup(wDisplayOptionBase,'White Background',set_value=1,/nonexclusive)
   g2=widget_info(plot_options_base,/geometry)
   wInfo=widget_text(winfobase,scr_xsize=xsize*hist_scale-g2.scr_xsize,scr_ysize=xsize,/align_left,uname='info',/scroll)
 
@@ -1289,7 +1339,10 @@ pro gsfitview,maps
     wPNG:wPNG,$
     wHistView:wHistView,$
     wPlotView:wPlotView, $
-    wROISum:wROISum $
+    wROISum:wROISum, $
+    wBlackOnWhite:wBlackOnWhite,$
+    wCharsize:wCharsize, $
+    wCharthick:wCharthick $
     }
   widget_control,state_base,set_uvalue=state  
   XMANAGER, 'gsfitview', main_base ,/no_block
