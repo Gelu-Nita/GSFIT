@@ -100,7 +100,14 @@ pro gsfit_readtb,datafile,maps
     ;temporary
     if maps[0].datatype eq 'Brightness Temperature' then begin
       for i=0, n_elements(maps)-1 do maps[i].id=strreplace(maps[i].id,'Tb','')
-      maps[*].dataunits='sfu'
+      if ~tag_exist(maps,'dataunits') then begin
+       maps=rem_tag(maps,'dataunit') 
+       maps=add_tag(maps,'sfu','dataunits') 
+      endif else maps[*].dataunits='sfu'
+      if ~tag_exist(maps,'rmsunits') then begin
+        maps=rem_tag(maps,'rmsunit')
+        maps=add_tag(maps,'sfu','rmsunits')
+      endif else maps[*].rmsunits='sfu'
       maps[*].datatype='Flux'
       sz=size(maps[0].data)
       dim=size(maps,/dim)

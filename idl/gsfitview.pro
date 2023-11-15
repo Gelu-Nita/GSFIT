@@ -893,14 +893,6 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
     endelse
   endif else  begin
       plot_map,parmap,title=parmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick,dmin=dmin,dmax=dmax,log_scale=log_scale
-;      default,bottom,0
-;      default,top,255
-;      ncolors=fix(top-bottom+1)
-;      prange=[min(parmap.data,/nan,max=m),m]
-;      if n_elements(dmin) ne 0 then prange[0]=dmin
-;      if n_elements(dmax) ne 0 then prange[1]=dmax
-;      cbar_range=keyword_set(log_scale) ? 10.^prange : prange
-;      plot_map_colorbar, cbar_range, bottom, ncolors, log=log_scale,charsize=!p.charsize,cb_title=parmap.dataunits
   endelse
   
   oplot,xpix[[i,i]],!y.crange,linesty=2,color=250,thick=3
@@ -1272,8 +1264,8 @@ pro gsfitview,maps
   widget_control,wSpectralPlotOptions,get_value=objSpectralPlotOptions
   wTimeProfileOptions=cw_objPlotOptions(widget_base(plot_options_base,title='Time Plot Options'),uname=!version.os_family eq 'Windows'?'Time Plot Options':'')
   wDisplayOptionBase=widget_base(plot_options_base,/frame,/column)
-  wCharsize=cw_objfield(wDisplayOptionBase,value=2,label='Charsize ',xtextsize=4,xlabelsize=17,uname='charsize')
-  wCharthick=cw_objfield(wDisplayOptionBase,value=2,label='Charthick ',xtextsize=4,xlabelsize=17,uname='charthick')
+  wCharsize=cw_objfield(wDisplayOptionBase,value=1,label='Charsize ',xtextsize=4,xlabelsize=17,uname='charsize')
+  wCharthick=cw_objfield(wDisplayOptionBase,value=1,label='Charthick ',xtextsize=4,xlabelsize=17,uname='charthick')
   wBlackOnWhite=cw_bgroup(wDisplayOptionBase,'White Background',set_value=1,/nonexclusive)
   g2=widget_info(plot_options_base,/geometry)
   wInfo=widget_text(winfobase,scr_xsize=xsize*hist_scale-g2.scr_xsize,scr_ysize=xsize,/align_left,uname='info',/scroll)

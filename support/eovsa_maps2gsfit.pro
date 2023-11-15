@@ -114,10 +114,14 @@ coeff_arr = reform(replicate(1,sz[1]*sz[2])#coeff,sz[1],sz[2],dim[0])
 
 ;if not already flux maps at this point, convert maps from Tb to flux disegarding the datatype requested, since the flux maps are anywa needed to compute RMS
 if maps[0].datatype eq 'Brightness Temperature' then begin
-  if tag_exist(maps[0],'dataunit') then maps[*].dataunit='sfu'
-  if tag_exist(maps[0],'dataunits') then maps[*].dataunits='sfu'
-  if tag_exist(maps[0],'rmsunit') then maps[*].rmsunit='sfu'
-  if tag_exist(maps[0],'rmsunits') then maps[*].rmsunits='sfu'
+  if ~tag_exist(maps,'dataunits') then begin
+   maps=rem_tag(maps,'dataunit') 
+   maps=add_tag(maps,'sfu','dataunits') 
+  endif else maps[*].dataunits='sfu'
+  if ~tag_exist(maps,'rmsunits') then begin
+    maps=rem_tag(maps,'rmsunit')
+    maps=add_tag(maps,'sfu','rmsunits')
+  endif else maps[*].rmsunits='sfu'
   maps[*].datatype='Flux'
   for i=0, n_elements(maps)-1 do maps[i].id=strreplace(maps[i].id,'Tb','')
   for i=0,dim[1]-1 do begin
@@ -193,8 +197,14 @@ end
 ; the flux maps are converte back to TB be fore returning the map structure
 if ~keyword_set(sfu) then begin
   if maps[0].datatype eq 'Flux' then begin
-    maps[*].dataunits='K'
-    maps[*].rmsunits='K'
+    if ~tag_exist(maps,'dataunits') then begin
+     maps=rem_tag(maps,'dataunit') 
+     maps=add_tag(maps,'K','dataunits') 
+    endif else maps[*].dataunits='K'
+    if ~tag_exist(maps,'rmsunits') then begin
+      maps=rem_tag(maps,'rmsunit')
+      maps=add_tag(maps,'K','rmsunits')
+    endif else maps[*].rmsunits='K
     maps[*].datatype='Brightness Temperature'
     for i=0, n_elements(maps)-1 do maps[i].id=strreplace(maps[i].id,'Tb','')
     for i=0,dim[1]-1 do begin

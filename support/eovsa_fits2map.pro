@@ -49,7 +49,7 @@ function eovsa_fits2map,files,no_iv2rl=no_iv2rl,flux_threshold=flux_threshold,rm
  has_rms=tag_exist(dummy_map,'rms')
  add_prop,dummy_map,dimensions=dimensions
  add_prop,dummy_map,datatype='Brightness Temperature'
- add_prop,dummy_map,dataunit='K'
+ add_prop,dummy_map,dataunits='K'
  if ~has_rms then add_prop,dummy_map,rms=0.0
  dummy_map.data=!values.f_nan
  dummy_map.ID='Missing'
@@ -58,7 +58,7 @@ function eovsa_fits2map,files,no_iv2rl=no_iv2rl,flux_threshold=flux_threshold,rm
   vla_fits2map, files[i], amap
   add_prop,amap,dimensions=dimensions
   add_prop,amap,datatype='Brightness Temperature'
-  add_prop,amap,dataunit='K'
+  add_prop,amap,dataunits='K'
   if ~has_rms then add_prop,amap,rms=0.0
   maps[i]=amap
  end
@@ -111,7 +111,14 @@ function eovsa_fits2map,files,no_iv2rl=no_iv2rl,flux_threshold=flux_threshold,rm
  ;use /sfu to convert maps from Tb to flux on the fly
  if keyword_set(sfu) then begin
    if maps[0].datatype eq 'Brightness Temperature' then begin
-     maps[*].dataunit='sfu'
+      if ~tag_exist(maps,'dataunits') then begin
+       maps=rem_tag(maps,'dataunit') 
+       maps=add_tag(maps,'sfu','dataunits') 
+      endif else maps[*].dataunits='sfu'
+      if ~tag_exist(maps,'rmsunits') then begin
+        maps=rem_tag(maps,'rmsunit')
+        maps=add_tag(maps,'sfu','rmsunits')
+      endif else maps[*].rmsunits='sfu'
      maps[*].datatype='Flux'
      sz=size(maps[0].data)
      dim=size(maps,/dim)

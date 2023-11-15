@@ -804,7 +804,7 @@ pro gsfit_event,event
         ptr_free,state.pmaps
         gsfit_abort,state
         bridges=state.bridges->Get(/all,count=count)
-        obj_destroy,bridges
+        if obj_valid(bridges) then obj_destroy,bridges
         info=state.header.info
         save,info,file='libinfo.inp'
         widget_control,event.top,/destroy
@@ -1836,7 +1836,7 @@ pro gsfit,nthreads
   wy=WIDGET_SLIDER(wslider_right_base,xsize=xsize/2,max=xsize-1,uvalue='y',font=!defaults.font,uname='cursor_y',/suppres,sensitive=0)
   
   woptions_base=widget_base(left_panel,/row,/frame)
-  wcharsize=cw_objfield(widget_base(woptions_base,/frame),value=!version.os_family eq 'Windows'?2:1,inc=0.1,min=0.1,max=5,label='Plot Charsize: ',font=!defaults.font,xtextsize=6)
+  wcharsize=cw_objfield(widget_base(woptions_base,/frame),value=!version.os_family eq 'Windows'?1:1,inc=0.1,min=0.1,max=5,label='Plot Charsize: ',font=!defaults.font,xtextsize=6)
   wapplythreshold=cw_bgroup(widget_base(woptions_base,/frame),['Apply Integrated Flux Threshold'],/nonexclusive,font=!defaults.font)
   
   wyrangelabel=widget_label(right_panel,xsize=xsize,value=' ',font=!defaults.font,/align_center,uname='xlabel')
