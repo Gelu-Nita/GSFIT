@@ -361,7 +361,7 @@ pro gsfit_draw,state,draw
     widget_control,state.wy,get_value=j
     spectrum=reform(spectrum[i,j,*])
     rmsweight=state.header.info.rms
-    err_spectrum=(err+rmsweight*max(err)/freq)
+    err_spectrum=(err+rmsweight*median(err)/freq)
     
     total_flux=total(spectrum,/nan)
     widget_control,state.wspectrum.totalflux,set_value=total_flux
@@ -486,7 +486,7 @@ pro gsfit_draw,state,draw
          
          
          
-         y=0.4
+         y=0.7
          tags=tag_names(fit)
          for k=0,n_elements(state.header.parnames)-1 do begin
           idx=where(tags eq strcompress(strupcase(state.header.parnames[k]),/rem),count1)
@@ -679,15 +679,15 @@ pro gsfit_sendfittask,bridge,state,task
   if npol eq 1 then begin
     FOR i = 0, npix-1 DO BEGIN
       spec_in[i,*,0]=flux_roi[i,*,0]>0; only I STOKES fluxes
-      spec_in[i,*,2]=err[*,0]+rmsweight*max(err)/freq; only I STOKES errors
+      spec_in[i,*,2]=err[*,0]+rmsweight*median(err)/freq; only I STOKES errors
       ;the second term attempts to account for the frequency-dependent spatial resolution
     ENDFOR
   endif else begin
     FOR i = 0, npix-1 DO BEGIN
       spec_in[i,*,0]=flux_roi[i,*,0]>0
-      spec_in[i,*,2]=err[*,0]+rmsweight*max(err[*,0])/freq
+      spec_in[i,*,2]=err[*,0]+rmsweight*median(err[*,0])/freq
       spec_in[i,*,1]=flux_roi[i,*,1]>0
-      spec_in[i,*,3]=err[*,1]+rmsweight*max(err[*,1])/freq
+      spec_in[i,*,3]=err[*,1]+rmsweight*median(err[*,1])/freq
     ENDFOR  
   endelse
 
