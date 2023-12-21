@@ -203,15 +203,15 @@ pro gsfitcp_sendfittask,bridge,task
   if npol eq 1 then begin
     FOR i = 0, npix-1 DO BEGIN
       spec_in[i,*,0]=flux_roi[i,*,0]>0; only I STOKES fluxes
-      spec_in[i,*,2]=err[*,0]+rmsweight*max(err)/freq; only I STOKES errors
+      spec_in[i,*,2]=err[*,0]+rmsweight*median(err)/freq; only I STOKES errors
       ;the second term attempts to account for the frequency-dependent spatial resolution
     ENDFOR
   endif else begin
     FOR i = 0, npix-1 DO BEGIN
       spec_in[i,*,0]=flux_roi[i,*,0]>0; only I STOKES fluxes
-      spec_in[i,*,2]=err[*,0]+rmsweight*max(err[*,0])/freq; only I STOKES errors
+      spec_in[i,*,2]=err[*,0]+rmsweight*median(err[*,0])/freq; only I STOKES errors
       spec_in[i,*,1]=flux_roi[i,*,1]>0; only I STOKES fluxes
-      spec_in[i,*,3]=err[*,1]+rmsweight*max(err[*,1])/freq; only I STOKES errors
+      spec_in[i,*,3]=err[*,1]+rmsweight*median(err[*,1])/freq; only I STOKES errors
     ENDFOR
   endelse
   ;===========End array definition============================================================
