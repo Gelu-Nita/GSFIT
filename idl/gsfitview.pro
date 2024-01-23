@@ -900,6 +900,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   if ~state.wHist.xroi.IsEmpty() then plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=250,thick=3
   
   if keyword_set(showrefmap) then begin
+        frontmap=drot_map(frontmap,ref=displaymap)
         get_map_coord,frontmap,xp,yp
         contour,frontmap.data,xp,yp,levels=level*max(frontmap.data)/100,path_xy=xy,path_info=info,/PATH_DATA_COORDS
         m=max(info.n,k)
