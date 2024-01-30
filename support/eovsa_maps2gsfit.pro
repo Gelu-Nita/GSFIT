@@ -109,7 +109,7 @@ freq=reform(maps[*,0,0].freq)
 ;compute sfu2Tb conversion factor
 coeff= 1.4568525d026/((dx*dy)*(7.27d7)^2)/freq^2
 coeff/=2; Division by two is needed to comply with the 
-        ; EOVSA map convention that assumes I=(XX+YY)/2=(RR_LL)/2
+        ; EOVSA map convention that assumes I=(XX+YY)/2=(RR+LL)/2
 coeff_arr = reform(replicate(1,sz[1]*sz[2])#coeff,sz[1],sz[2],dim[0])
 
 ;if not already flux maps at this point, convert maps from Tb to flux disegarding the datatype requested, since the flux maps are anywa needed to compute RMS
