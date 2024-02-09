@@ -534,7 +534,7 @@ pro gsfitview_event,event
    state.wPNG:gsfitview2png,state
    state.wHelp: begin
                  help='http://www.ovsa.njit.edu/wiki/index.php/GSFITVIEW_Help'
-                 if !version.os_family eq 'Windows' then spawn,'start /max '+help else answ=dialog_message(' For help, please open ' +help+' in your preffred browser.')    
+                 if !version.os_family eq 'Windows' then spawn,'start /max '+help else answ=dialog_message(' For help, please open ' +help+' in your preferred browser.')    
                 end                    
                  
    else:
