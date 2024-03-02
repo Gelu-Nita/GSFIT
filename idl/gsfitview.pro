@@ -854,6 +854,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   if keyword_set(showrefmap) then begin
      if keyword_set(contour) then begin
         plot_map,displaymap,title=displaymap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick
+        plot_map,refmap,/over,levels=level,/per,thick=6,color=0,xshift=xshift,yshift=yshift
         plot_map,refmap,/over,levels=level,/per,thick=3,color=255,xshift=xshift,yshift=yshift
      endif else begin
         plot_map,refmap,title=refmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift,charsize=charsize,charthick=charthick
@@ -884,7 +885,8 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   if keyword_set(showrefmap) then begin
     if keyword_set(contour) then begin
       plot_map,parmap,title=parmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick,dmin=dmin,dmax=dmax,log_scale=log_scale
-      plot_map,refmap,/over,levels=level,/per,thick=3,color=255,xshift=xshift,yshift=yshift
+      plot_map,refmap,/over,levels=level,/per,thick=6,color=0,xshift=xshift,yshift=yshift
+       plot_map,refmap,/over,levels=level,/per,thick=3,color=255,xshift=xshift,yshift=yshift
       frontmap=refmap
     endif else begin
       plot_map,refmap,title=refmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift,charsize=charsize,charthick=charthick
@@ -930,7 +932,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
       end
       plot,freq,data_spectrum[i,j,*],xlog=xlog,ylog=ylog,xrange=pxrange,yrange=pyrange,psym=2,$
         xtitle='Frequency (GHz)',ytitle='Flux density [sfu/pixel]',title='Spectral Fit',ymargin=[6,6],/xsty,/ysty,charsize=charsize,charthick=charthick
-      oploterr, freq, data_spectrum[i,j,*], err_spectrum[i,j,*]*2, psym=3;, hatlength=2, errcolor=255 
+      oploterr, freq, data_spectrum[i,j,*], err_spectrum[i,j,*]*2/2, psym=3;, hatlength=2, errcolor=255 
       oplot,freq,fit_spectrum[i,j,*],color=BlackOnWhite?50:150,thick=3
       oplot,freq[[freq_idx,freq_idx]],10^!y.crange,linesty=2,color=250,thick=3
       if range eq 'Auto' then objSpectralPlotOptions->SetProperty,xrange=keyword_set(xlog)?10^!x.crange:!x.crange, yrange=keyword_set(ylog)?10^!y.crange:!y.crange

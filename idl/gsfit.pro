@@ -485,8 +485,9 @@ pro gsfit_draw,state,draw
         end
          
          
-         
-         y=0.7
+         c_parm=200
+         ;y=0.7
+         y=0.4
          tags=tag_names(fit)
          for k=0,n_elements(state.header.parnames)-1 do begin
           idx=where(tags eq strcompress(strupcase(state.header.parnames[k]),/rem),count1)
@@ -499,7 +500,7 @@ pro gsfit_draw,state,draw
             else:parmstr=str_replace(str_replace(str_replace(str_replace(str_replace(strcompress(string(state.header.parnames[k],fit.(idx),fit.(erridx),state.header.units[k],format="(a10,'=(',g16.3,'!N!9+!3',g16.3,'!N)',a10)")),'+0','+'),'+0','+'),'^','!E'),'e+','x10!U'),'e-','x10!U-')
             endcase
           end
-          gx_plot_label,0.01,y,parmstr,/ylog,/xlog,color=255,charsize=1.2*charsize,charthick=2
+          gx_plot_label,0.01,y,parmstr,/ylog,/xlog,color=c_parm,charsize=1.2*charsize,charthick=2
           y-=0.05
          endfor
          
