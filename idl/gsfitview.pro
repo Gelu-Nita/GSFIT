@@ -949,7 +949,11 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
       if n_elements(pyrange) gt 0 then dummy=temporary(pyrange)
       widget_control,state.wTimeProfileOptions,get_value=objTimePlotOptions
       objTimePlotOptions->GetProperty,range=range,xrange=pxrange,yrange=pyrange,xlog=xlog,ylog=ylog
-  
+      
+      if (size(((*state.pmaps).(parm_index)).data))[0] ne 3 then begin
+        erase,0 
+        goto,skip_timeplot
+      endif
       lightcurve=((*state.pmaps).(parm_index)).data
       if errparm_index[0] gt 0 then errlightcurve=((*state.pmaps).(errparm_index)).data
       
@@ -983,9 +987,10 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
          outplot,minmax(time),mean+sdev[[0,0]],linesty=1
          outplot,minmax(time),mean-sdev[[0,0]],linesty=1
       endif
-      
+      skip_timeplot: 
       if range eq 'Auto' then objTimePlotOptions->SetProperty,xrange=keyword_set(xlog)?10^!x.crange:!x.crange, yrange=keyword_set(ylog)?10^!y.crange:!y.crange
     endif else erase,0 
+
   end
   gsfitview_display_statistics,state,_extra=_extra
   !p=psave
@@ -1015,7 +1020,8 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
     widget_control,state.wxlabel,set_value=string(xpix[i],format="('X:',f7.2,'arcsec')")
     widget_control,state.wylabel,set_value=string(ypix[j],format="('Y:',f7.2, 'arcsec')")
     for k=0,n_elements(parnames)-1 do begin
-      paridx=where(names eq parnames[k])
+      paridx=where(names eq parnames[k], count)
+      if count eq 0 then goto,skip_parm
       erridx=where(names eq errnames[k])
       par=((((*state.pmaps).(paridx))[time_idx]).data)[i,j]
       err=((((*state.pmaps).(erridx))[time_idx]).data)[i,j]
@@ -1030,6 +1036,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
         else:units=((((*state.pmaps).(erridx))[time_idx]).dataunits)
       endcase
        LINES=[LINES,parnames[k]+ctab+strcompress(string(par,pm,err,format="('=(',g16.2,a2,g16.2,') ')")+units),'']
+    skip_parm:
     endfor
   endif else lines=''  
   widget_control,winfo,set_value=LINES
