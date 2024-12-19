@@ -511,7 +511,66 @@ pro gsfit_draw,state,draw
   end
 end
 
+pro gsfit_refit,state,start=start
+ nfits=state.fit.count()
+ if nfits eq 0 then begin
+  answ=dialog_message('No solutions computed yet, nothing to be done!',/info)
+  return
+ endif
+ fits=state.fit.ToArray()
+ freq=state.header.freq
+ flabels=string(freq[0],format="(f5.2,' GHz')")
+ for i=1,n_elements(freq)-1 do begin
+   flabels=flabels+'|'+string(freq[i],format="(f5.2,' GHz')")
+ endfor
+ minfreq=widget_info(state.wMinFreq,/droplist_select)
+ maxfreq=widget_info(state.wMaxFreq,/droplist_select)
+ chisqr=fits.chisqr
+ good=where(chisqr gt 0,count)
+ if count gt 0 then chisqr=chisqr[good]
+ fit_info=strcompress(string([nfits,minmax(chisqr)],format="(i10,' computed solutions with CHISQ ranging from ',g0,' to ',g0)"))
 
+ desc=[$
+                   '0, BASE,, Column, FRAME', $
+                   '1, BASE,, Row, FRAME', $
+                   '2, LABEL, '+fit_info+', left', $
+                   '1, BASE,, Row, FRAME', $
+                   '0, FLOAT, '+string(median(chisqr),format="(g0)")+', LABEL_LEFT= Redo fits for CHISQR above, WIDTH=6, TAG=chisqr',$
+                   '2, INTEGER, 100,Label_LEFT=Maximum number of pixels per task, WIDTH=6, TAG=nmax',$ 
+                   '1, BASE,, Row, FRAME', $
+                   '0, Droplist,'+flabels +',LABEL_LEFT= Min freq. range:,set_value='+string(minfreq)+', TAG=fmin',$
+                   '2, Droplist,'+flabels +', LABEL_LEFT= Max freq. range:, set_value='+string(maxfreq)+',TAG=fmax',$
+                   '1, BASE,, ROW,Frame', $
+                   '2, BUTTON, Enqueue and Wait|Enqueue and Process|Save Task List, Exclusive, Row,SET_VALUE=0,LABEL_LEFT='', TAG=start', $
+                   '1, BASE,, ROW,Frame', $
+                   '0, BUTTON, OK, QUIT, TAG=OK', $
+                   '2, BUTTON, Cancel, QUIT, TAG=CANCEL']
+  a = CW_FORM(desc, /COLUMN,title='CHISQR Threshold Refit Selection')
+  if a.ok then begin
+    good=where(fits.chisqr ge a.chisqr,count)
+    if count gt 0 then begin
+      fits=fits[good]
+      hist=histogram(fits.t,loc=loc,reverse=R)
+      for i=0,n_elements(loc)-1 do begin
+       if R[i] ne R[i+1] then begin
+        idx=[R[R[I] : R[i+1]-1]]
+        repeat begin
+            IF n_elements(idx) GT a.nmax THEN BEGIN
+                task_idx = idx[0:a.nmax-1] 
+                idx = idx[a.nmax:*] 
+            ENDIF ELSE BEGIN
+                task_idx = idx 
+                idx = [] 
+            ENDELSE
+            state.fittasks->add,{id:state.fittasks.count(),idx:reform(task_idx),t:loc[i],fmin:a.fmin,fmax:a.fmax,status:'pending'}
+        endrep until n_elements(idx) eq 0
+       endif
+      end
+      gsfit_update_queue,state 
+      if a.start eq 1 then widget_control,state.wStart,send_event={id:0l,top:0l,handler:0l,select:1},/set_button
+    endif else answ=dialog_message('No solution above selected CHISQR threshold, nothing to be done!',/info)
+  endif
+end
 
 
 pro gsfit_schedule,state,task,start=start
@@ -581,7 +640,7 @@ pro gsfit_start,state
   end
   bridge_count=n_elements(bridges)
   if bridge_count eq 0 then begin
-    message,'All bridges are bussy, tasks will be waiting in queue!',/info
+    message,'All bridges are busy, tasks will be waiting in queue!',/info
     return
   endif
   for i=0,min([bridge_count,task_count])-1 do begin
@@ -635,6 +694,7 @@ pro gsfit_readframe, bridge,state,task
 end
 
 pro gsfit_sendfittask,bridge,state,task
+  wait,0.1
   if ~ptr_valid(state.pmaps) then return
   time_idx=task.t
   data_size=size((*state.pmaps).data)
@@ -1141,6 +1201,8 @@ pro gsfit_event,event
                     ninput[3]=maxfreq-minfreq+1
                     widget_control,state.lib.wNinput,set_value=ninput
                  end                          
+  
+  state.wFitRedo:gsfit_refit,state
   
   state.wFitOne:begin
               widget_control,state.wx,get_value=x0
@@ -1749,7 +1811,9 @@ pro gsfit,nthreads
   wFitOne= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('plot.bmp', subdirectory=subdirectory)),$
     /bitmap,tooltip='Fit Selected Pixel')  
   wFitRange= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('data_range.bmp', subdirectory=subdirectory)),$
-    /bitmap,tooltip='Fit Range')   
+    /bitmap,tooltip='Fit Range')  
+  wFitRedo= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('redo.bmp', subdirectory=subdirectory)),$
+    /bitmap,tooltip='Redo Fits Above CHISQR Thresholds')   
   wStart=widget_button(wToolbarBase,value=gx_bitmap(gx_findfile('play.bmp')),tooltip='Process the task queue',/bitmap,uname='Queue_START')
   wAbort=widget_button(wToolbarBase,value=gx_bitmap(filepath('delete.bmp', subdirectory=subdirectory)),tooltip='Abort or Delete Tasks',/bitmap,uname='Queue_ABORT')
   wSaveFitList= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('save.bmp', subdirectory=subdirectory)),$
@@ -1895,6 +1959,7 @@ pro gsfit,nthreads
     wImport:wImport,$
     wFitOne:wFitOne,$
     wFitRange:wFitRange,$
+    wFitRedo:wFitRedo,$
     wRestoreFitList:wRestoreFitList,$
     wSaveFitList:wSaveFitList,$
     wSelectTarget:wSelectTarget,$
