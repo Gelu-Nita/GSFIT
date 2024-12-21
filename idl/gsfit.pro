@@ -419,12 +419,6 @@ pro gsfit_draw,state,draw
             parms=double(state.header.info.fastcode.parms.value)
             names=strupcase(strcompress(state.header.info.fastcode.parms.name,/rem))
             pnames=tag_names(fit)
-;               CATCH, Error_status
-;               IF Error_status NE 0 THEN BEGIN
-;                  PRINT, 'Error index: ', Error_status
-;                  PRINT, 'Error message: ', !ERROR_STATE.MSG
-;                  CATCH, /CANCEL
-;               ENDIF
             for i=0,n_elements(pnames)-1 do begin
               case pnames[i] of
                 'T_E':begin
@@ -517,11 +511,34 @@ pro gsfit_refit,state,start=start
   answ=dialog_message('No solutions computed yet, nothing to be done!',/info)
   return
  endif
- fits=state.fit.ToArray()
+ if ptr_valid(state.pmaps) then begin
+   sz=size((*state.pmaps).data)
+   nx=sz[1]
+   ny=sz[2]
+   nf=sz[3]
+   np=sz[4]
+   nt=sz[5]
+ endif else begin
+   answ=dialog_message('No data maps uploaded yet, nothing to be done!',/info)
+   return
+ endelse
+ widget_control,state.wxlabel,get_value=x0
+ widget_control,state.wx,get_value=x
+ x0=strmid(x0,9)
+ widget_control,state.wylabel,get_value=y0
+ widget_control,state.wy,get_value=y
+ y0=strmid(y0,9)
+ widget_control,state.wtime,get_value=t
+ t0=state.header.time[t]+string(t,format="(' [',I0,']')")
  freq=state.header.freq
+ fits=state.fit.ToArray()
  flabels=string(freq[0],format="(f5.2,' GHz')")
  for i=1,n_elements(freq)-1 do begin
    flabels=flabels+'|'+string(freq[i],format="(f5.2,' GHz')")
+ endfor
+ tlabels=state.header.time[0]+string(0,format="(' [',I0,']')")
+ for i=1,nt-1 do begin
+   tlabels=tlabels+'|'+state.header.time[i]+string(i,format="(' [',I0,']')")
  endfor
  minfreq=widget_info(state.wMinFreq,/droplist_select)
  maxfreq=widget_info(state.wMaxFreq,/droplist_select)
@@ -529,17 +546,50 @@ pro gsfit_refit,state,start=start
  good=where(chisqr gt 0,count)
  if count gt 0 then chisqr=chisqr[good]
  fit_info=strcompress(string([nfits,minmax(chisqr)],format="(i10,' computed solutions with CHISQ ranging from ',g0,' to ',g0)"))
-
+ if state.xroi.Count() gt 1 then begin
+   xroi=state.xroi.ToArray()
+   yroi=state.yroi.ToArray()
+   widget_control,state.wx,get_uvalue=xpix
+   widget_control,state.wy,get_uvalue=ypix
+   idx=polyfillv(floor((xroi-xpix[0])/(xpix[1]-xpix[0])),floor((yroi-ypix[0])/(ypix[1]-ypix[0])),nx,ny)
+   ij=array_indices([nx,ny],idx,/dim)
+   match=bytarr(n_elements(fits))
+   for k=0, n_elements(fits)-1 do begin
+     idx=where(fits[k].x eq ij[0,*] and fits[k].y eq ij[1,*],c)
+     if c gt 0 then match[k]=1
+   endfor
+   roi_idx=where(match eq 1, roi_count)
+   if roi_count gt 0 then inroi=fits[roi_idx] else inroi=[]
+   roi_info=strcompress(string(roi_count,nt, format="(i10,' computed solutions inside the selected ROI and ',i0, ' time frames')"))
+ endif else begin
+   roi_info='No ROI selected'
+   roi_count=0
+ endelse
  desc=[$
                    '0, BASE,, Column, FRAME', $
                    '1, BASE,, Row, FRAME', $
-                   '2, LABEL, '+fit_info+', left', $
+                   '2, LABEL, Cursor X= '+x0+', left',$
                    '1, BASE,, Row, FRAME', $
-                   '0, FLOAT, '+string(median(chisqr),format="(g0)")+', LABEL_LEFT= Redo fits for CHISQR above, WIDTH=6, TAG=chisqr',$
+                   '2, LABEL, Cursor Y= '+y0+', left',$
+                   '1, BASE,, Row, FRAME', $
+                   '2, LABEL, Frame  T= '+t0+', left', $
+                   '1, BASE,, Row, FRAME', $
+                   '2, LABEL, '+fit_info+', left',$
+                   '1, BASE,, Row, FRAME', $
+                   '2, LABEL,'+roi_info+', CENTER',$
+                   '1, BASE,, Row, FRAME', $
+                   '0, FLOAT, '+string(median(chisqr),format="(g0)")+', LABEL_LEFT=Redo fits for CHISQR above, WIDTH=6, TAG=chisqr',$
                    '2, INTEGER, 100,Label_LEFT=Maximum number of pixels per task, WIDTH=6, TAG=nmax',$ 
+                   '1, BASE,, Row, FRAME', $
+                   '0, Droplist,'+tlabels +',LABEL_LEFT= Min time range:,set_value='+string(0)+', TAG=tmin',$
+                   '2, Droplist,'+tlabels +', LABEL_LEFT= Max time range:, set_value='+string(nt-1)+',TAG=tmax',$
                    '1, BASE,, Row, FRAME', $
                    '0, Droplist,'+flabels +',LABEL_LEFT= Min freq. range:,set_value='+string(minfreq)+', TAG=fmin',$
                    '2, Droplist,'+flabels +', LABEL_LEFT= Max freq. range:, set_value='+string(maxfreq)+',TAG=fmax',$
+                   '1, BASE,, Row, FRAME', $
+                   '2, BUTTON, Recompute solution for selected sixel|Recompute solutions inside the selected ROI and time range|Recompute all solutions in the selected time range, Exclusive, Column,SET_VALUE=0,LABEL_LEFT='', TAG=redo', $
+                   '1, BASE,, ROW,Frame', $
+                   '2, BUTTON, Replace solution anyway|Replace solution only if new CHISQR is smaller,Exclusive,SET_VALUE='+string(state.replace_if_better)+',LABEL_LEFT='', TAG=replace', $
                    '1, BASE,, ROW,Frame', $
                    '2, BUTTON, Enqueue and Wait|Enqueue and Process|Save Task List, Exclusive, Row,SET_VALUE=0,LABEL_LEFT='', TAG=start', $
                    '1, BASE,, ROW,Frame', $
@@ -547,28 +597,47 @@ pro gsfit_refit,state,start=start
                    '2, BUTTON, Cancel, QUIT, TAG=CANCEL']
   a = CW_FORM(desc, /COLUMN,title='CHISQR Threshold Refit Selection')
   if a.ok then begin
-    good=where(fits.chisqr ge a.chisqr,count)
-    if count gt 0 then begin
-      fits=fits[good]
-      hist=histogram(fits.t,loc=loc,reverse=R)
-      for i=0,n_elements(loc)-1 do begin
-       if R[i] ne R[i+1] then begin
-        idx=[R[R[I] : R[i+1]-1]]
-        repeat begin
-            IF n_elements(idx) GT a.nmax THEN BEGIN
-                task_idx = idx[0:a.nmax-1] 
-                idx = idx[a.nmax:*] 
-            ENDIF ELSE BEGIN
-                task_idx = idx 
-                idx = [] 
-            ENDELSE
-            state.fittasks->add,{id:state.fittasks.count(),idx:reform(task_idx),t:loc[i],fmin:a.fmin,fmax:a.fmax,status:'pending'}
-        endrep until n_elements(idx) eq 0
-       endif
-      end
-      gsfit_update_queue,state 
-      if a.start eq 1 then widget_control,state.wStart,send_event={id:0l,top:0l,handler:0l,select:1},/set_button
-    endif else answ=dialog_message('No solution above selected CHISQR threshold, nothing to be done!',/info)
+    state.replace_if_better=a.replace
+    if a.redo eq 0 then begin
+      img=bytarr(nx,ny)
+      img[x,y]=1
+      task_idx=where(img eq 1)
+      state.fittasks->add,{id:state.fittasks.count(),idx:reform(task_idx),t:t,fmin:a.fmin,fmax:a.fmax,status:'pending'}
+      gsfit_update_queue,state
+      if a.start eq 1 then widget_control,state.wStart,send_event={id:0l,top:0l,handler:0l,select:1},/set_button 
+    endif else begin
+      if a.redo eq 1 then begin
+        if roi_count eq 0 then begin
+          msg=state.xroi.Count() eq 0? 'No ROI Selected, nothing to be done1':'No solution inside the selected ROI and time range, nothing to be done!'
+          answ=dialog_message(msg,/info)
+          return
+        endif
+        fits=inroi
+      endif 
+      good=where(fits.chisqr ge a.chisqr,count)
+      if count gt 0 then begin
+        fits=fits[good]
+        tmin=min([a.tmin,a.tmax],max=tmax)
+        hist=histogram(fits.t,loc=loc,reverse=R,min=tmin,max=tmax)
+        for i=0,n_elements(loc)-1 do begin
+         if R[i] ne R[i+1] then begin
+          idx=[R[R[I] : R[i+1]-1]]
+          repeat begin
+              IF n_elements(idx) GT a.nmax THEN BEGIN
+                  task_idx = idx[0:a.nmax-1] 
+                  idx = idx[a.nmax:*] 
+              ENDIF ELSE BEGIN
+                  task_idx = idx 
+                  idx = [] 
+              ENDELSE
+              state.fittasks->add,{id:state.fittasks.count(),idx:reform(task_idx),t:loc[i],fmin:a.fmin,fmax:a.fmax,status:'pending'}
+          endrep until n_elements(idx) eq 0
+         endif
+        end
+        gsfit_update_queue,state 
+        if a.start eq 1 then widget_control,state.wStart,send_event={id:0l,top:0l,handler:0l,select:1},/set_button
+      endif else answ=dialog_message('No solution above selected CHISQR threshold, nothing to be done!',/info)
+   endelse 
   endif
 end
 
@@ -666,12 +735,6 @@ pro gsfit_readframe, bridge,state,task
   nparms=sz[2]
   
     for j=0,npix-1 do begin
-      l=state.fit
-      if ~l.IsEmpty() then begin
-        filter=(l.Filter(Lambda(l,x,y,t:l.x eq x and l.y eq y and l.t eq t),x[j],y[j],time_idx))
-        match=l.where(filter.toarray(),count=count)
-        if count gt 0 then (state.fit).remove,match
-      end
       data_spectrum[*]=0
       errdata_spectrum[*]=0
       fit_spectrum[*]=0
@@ -688,7 +751,24 @@ pro gsfit_readframe, bridge,state,task
       for k=0,nparms-1 do begin
         afit=create_struct(afit,state.header.parnames[k],aparms[j,k],state.header.errparnames[k],eparms[j,k])
       endfor
-      state.fit.Add,afit
+      l=state.fit
+      if ~l.IsEmpty() then begin
+        filter=(l.Filter(Lambda(l,x,y,t:l.x eq x and l.y eq y and l.t eq t),x[j],y[j],time_idx))
+        match=l.where(filter.toarray(),count=count)
+        if count gt 0 then begin
+          for k=0, count-1 do begin
+            if  afit.CHISQR lt l[match[k]].CHISQR or ~state.replace_if_better then begin
+               (state.fit).remove,match[k]
+               state.fit.Add,afit 
+               comp=l[match[k]].CHISQR eq afit.CHISQR?'=':(l[match[k]].CHISQR gt afit.CHISQR?'>':'<')
+               message,string(afit.CHISQR,comp,l[match[k]].CHISQR,x[j],y[j],time_idx,format="('New CHISQR=',g0,a0,g0,', replacement made @[x=',g0,', y=',g0,', t=',g0,']!')"),/info 
+            endif else begin
+              comp=l[match[k]].CHISQR eq afit.CHISQR?'=':'>'
+              message,string(afit.CHISQR,comp,l[match[k]].CHISQR,x[j],y[j],time_idx,format="('New CHISQR=',g0,a0,g0,', no replacement made @[x=',g0,', y=',g0,', t=',g0,']!')"),/info
+            endelse
+          endfor
+        endif
+      endif else state.fit.Add,afit
       widget_control,state.wsavefitlist,set_uvalue=1
     endfor
 end
@@ -1433,18 +1513,6 @@ pro gsfit_event,event
                             endif
                             newinfo:
                             fastcode_update=1
-;                            if MATCH_STRUCT(state.header.info,info,/TYPE_ONLY) then begin
-;                              state.header.info=info
-;                              widget_control,state.lib.wNinput, set_value=info.nparms.value
-;                              widget_control,state.lib.wRinput, set_value=info.rparms.value
-;                              widget_control,state.lib.wGuessParms, set_value=info.parms_in.guess
-;                              widget_control,state.lib.wMinParms, set_value=info.parms_in.min
-;                              widget_control,state.lib.wMaxParms, set_value=info.parms_in.max
-;                              widget_control,state.lib.wLibPath, set_value=info.path
-;                              widget_control,state.lib.wrms, set_value=info.rms
-;                            endif else begin
-;                              header=state.header
-;                              header=rep_tag_value(header,info,'info')
                               if tag_exist(state.header,'freq') then freq=state.header.freq
                               if tag_exist(state.header,'time') then time=state.header.time
                               if tag_exist(state.header,'pol') then pol=state.header.pol
@@ -1562,19 +1630,6 @@ pro gsfit_event,event
                             answ=dialog_message('Invalid GSFIT settings file!')
                             return
                           endif
-;                            if MATCH_STRUCT(state.header.info,info,/TYPE_ONLY) then begin
-;                              state.header.info=info
-;                              widget_control,state.lib.wNinput, set_value=info.nparms.value
-;                              widget_control,state.lib.wRinput, set_value=info.rparms.value
-;                              widget_control,state.lib.wGuessParms, set_value=info.parms_in.guess
-;                              widget_control,state.lib.wMinParms, set_value=info.parms_in.min
-;                              widget_control,state.lib.wMaxParms, set_value=info.parms_in.max
-;                              widget_control,state.lib.wLibPath, set_value=info.path
-;                              widget_control,state.lib.wrms, set_value=info.rms
-;                            endif else begin
-;                              header=state.header
-;                              header=rep_tag_value(header,info,'info')
-;                              state=rep_tag_value(state,header,'header')
                               if tag_exist(state.header,'freq') then freq=state.header.freq
                               if tag_exist(state.header,'time') then time=state.header.time
                               if tag_exist(state.header,'pol') then pol=state.header.pol
@@ -1995,6 +2050,7 @@ pro gsfit,nthreads
     wMinFreq:wMinFreq,$
     wMaxFreq:wMaxFreq,$
     wFastCode:wFastCode,$
+    replace_if_better:1,$
     lib:create_struct(input_widgets,'wLibPath',wLibPath)}
   widget_control,state_base,set_uvalue=state  
   XMANAGER, 'gsfit', main_base ,/no_block
