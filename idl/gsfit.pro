@@ -630,7 +630,9 @@ pro gsfit_refit,state,start=start
                   task_idx = idx 
                   idx = [] 
               ENDELSE
-              state.fittasks->add,{id:state.fittasks.count(),idx:reform(task_idx),t:loc[i],fmin:a.fmin,fmax:a.fmax,status:'pending'}
+              img=bytarr(nx,ny)
+              img[fits[task_idx].x,fits[task_idx].y]=1
+              state.fittasks->add,{id:state.fittasks.count(),idx:reform(where(img eq 1)),t:loc[i],fmin:a.fmin,fmax:a.fmax,status:'pending'}
           endrep until n_elements(idx) eq 0
          endif
         end
@@ -757,10 +759,10 @@ pro gsfit_readframe, bridge,state,task
         match=l.where(filter.toarray(),count=count)
         if count gt 0 then begin
           for k=0, count-1 do begin
-            if  afit.CHISQR lt l[match[k]].CHISQR or ~state.replace_if_better then begin
+            if  afit.CHISQR lt l[match[k]].CHISQR or ~state.replace_if_better or (l[match[k]].CHISQR eq 0 and afit.CHISQR gt 0)then begin
                (state.fit).remove,match[k]
                state.fit.Add,afit 
-               comp=l[match[k]].CHISQR eq afit.CHISQR?'=':(l[match[k]].CHISQR gt afit.CHISQR?'>':'<')
+               comp=l[match[k]].CHISQR eq afit.CHISQR?'=':(l[match[k]].CHISQR gt afit.CHISQR?'<':'>')
                message,string(afit.CHISQR,comp,l[match[k]].CHISQR,x[j],y[j],time_idx,format="('New CHISQR=',g0,a0,g0,', replacement made @[x=',g0,', y=',g0,', t=',g0,']!')"),/info 
             endif else begin
               comp=l[match[k]].CHISQR eq afit.CHISQR?'=':'>'
