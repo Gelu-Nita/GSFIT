@@ -618,7 +618,7 @@ pro gsfit_refit,state,start=start
       if count gt 0 then begin
         fits=fits[good]
         tmin=min([a.tmin,a.tmax],max=tmax)
-        hist=histogram(fits.t,loc=loc,reverse=R,min=tmin,max=tmax)
+        hist=histogram([fits.t],loc=loc,reverse=R,min=tmin,max=tmax)
         for i=0,n_elements(loc)-1 do begin
          if R[i] ne R[i+1] then begin
           idx=[R[R[I] : R[i+1]-1]]
