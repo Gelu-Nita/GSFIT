@@ -769,7 +769,7 @@ pro gsfit_readframe, bridge,state,task
               message,string(afit.CHISQR,comp,l[match[k]].CHISQR,x[j],y[j],time_idx,format="('New CHISQR=',g0,a0,g0,', no replacement made @[x=',g0,', y=',g0,', t=',g0,']!')"),/info
             endelse
           endfor
-        endif
+        endif else state.fit.Add,afit
       endif else state.fit.Add,afit
       widget_control,state.wsavefitlist,set_uvalue=1
     endfor
