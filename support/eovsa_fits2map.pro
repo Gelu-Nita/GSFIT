@@ -122,6 +122,9 @@ function eovsa_fits2map,files,no_iv2rl=no_iv2rl,flux_threshold=flux_threshold,rm
      maps[*].datatype='Flux'
      sz=size(maps[0].data)
      dim=size(maps,/dim)
+     if n_elements(dim) eq 2 then maps=reform(maps,dim[0],dim[1],1)
+     if n_elements(dim) eq 1 then maps=reform(maps,dim[0],1,1)
+     dim=size(maps,/dim)
      dx=(maps[0].dx)
      dy=(maps[0].dy)
      freq=reform(maps[*,0,0].freq)
