@@ -540,8 +540,6 @@ pro gsfit_refit,state,start=start
  for i=1,nt-1 do begin
    tlabels=tlabels+'|'+state.header.time[i]+string(i,format="(' [',I0,']')")
  endfor
- minfreq=widget_info(state.wMinFreq,/droplist_select)
- maxfreq=widget_info(state.wMaxFreq,/droplist_select)
  chisqr=fits.chisqr
  good=where(chisqr gt 0,count)
  if count gt 0 then chisqr=chisqr[good]
@@ -565,6 +563,8 @@ pro gsfit_refit,state,start=start
    roi_info='No ROI selected'
    roi_count=0
  endelse
+ minfreq=min(inroi.fmin)
+ maxfreq=max(inroi.fmax)
  desc=[$
                    '0, BASE,, Column, FRAME', $
                    '1, BASE,, Row, FRAME', $
@@ -587,7 +587,7 @@ pro gsfit_refit,state,start=start
                    '0, Droplist,'+flabels +',LABEL_LEFT= Min freq. range:,set_value='+string(minfreq)+', TAG=fmin',$
                    '2, Droplist,'+flabels +', LABEL_LEFT= Max freq. range:, set_value='+string(maxfreq)+',TAG=fmax',$
                    '1, BASE,, Row, FRAME', $
-                   '2, BUTTON, Recompute solution for selected sixel|Recompute solutions inside the selected ROI and time range|Recompute all solutions in the selected time range, Exclusive, Column,SET_VALUE=0,LABEL_LEFT='', TAG=redo', $
+                   '2, BUTTON, Recompute solution for selected sixel|Recompute solutions inside the selected ROI and time range|Recompute all solutions in the selected time range, Exclusive, Column,SET_VALUE=1,LABEL_LEFT='', TAG=redo', $
                    '1, BASE,, ROW,Frame', $
                    '2, BUTTON, Replace solution anyway|Replace solution only if new CHISQR is smaller,Exclusive,SET_VALUE='+string(state.replace_if_better)+',LABEL_LEFT='', TAG=replace', $
                    '1, BASE,, ROW,Frame', $
@@ -760,12 +760,12 @@ pro gsfit_readframe, bridge,state,task
         if count gt 0 then begin
           for k=0, count-1 do begin
             if  afit.CHISQR lt l[match[k]].CHISQR or ~state.replace_if_better or (l[match[k]].CHISQR eq 0 and afit.CHISQR gt 0)then begin
-               (state.fit).remove,match[k]
-               state.fit.Add,afit 
-               comp=l[match[k]].CHISQR eq afit.CHISQR?'=':(l[match[k]].CHISQR gt afit.CHISQR?'<':'>')
+               comp=l[match[k]].CHISQR eq afit.CHISQR?'=':(afit.CHISQR lt l[match[k]].CHISQR?'<':'>')
                message,string(afit.CHISQR,comp,l[match[k]].CHISQR,x[j],y[j],time_idx,format="('New CHISQR=',g0,a0,g0,', replacement made @[x=',g0,', y=',g0,', t=',g0,']!')"),/info 
+               (state.fit).remove,match[k]
+               state.fit.Add,afit
             endif else begin
-              comp=l[match[k]].CHISQR eq afit.CHISQR?'=':'>'
+              comp=afit.CHISQR eq l[match[k]].CHISQR?'=':'>'
               message,string(afit.CHISQR,comp,l[match[k]].CHISQR,x[j],y[j],time_idx,format="('New CHISQR=',g0,a0,g0,', no replacement made @[x=',g0,', y=',g0,', t=',g0,']!')"),/info
             endelse
           endfor
