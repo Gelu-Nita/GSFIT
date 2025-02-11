@@ -589,7 +589,7 @@ pro gsfit_refit,state,start=start
                    '0, Droplist,'+flabels +',LABEL_LEFT= Min freq. range:,set_value='+string(minfreq)+', TAG=fmin',$
                    '2, Droplist,'+flabels +', LABEL_LEFT= Max freq. range:, set_value='+string(maxfreq)+',TAG=fmax',$
                    '1, BASE,, Row, FRAME', $
-                   '2, BUTTON, Recompute solution for selected sixel|Recompute solutions inside the selected ROI and time range|Recompute all solutions in the selected time range, Exclusive, Column,SET_VALUE='+(roi_count gt 0?'1':'0')+',LABEL_LEFT='', TAG=redo', $
+                   '2, BUTTON, Recompute solution for selected pixel|Recompute solutions inside the selected ROI and time range|Recompute all solutions in the selected time range, Exclusive, Column,SET_VALUE='+(roi_count gt 0?'1':'0')+',LABEL_LEFT='', TAG=redo', $
                    '1, BASE,, ROW,Frame', $
                    '2, BUTTON, Replace solution anyway|Replace solution only if new CHISQR is smaller,Exclusive,SET_VALUE='+string(state.replace_if_better)+',LABEL_LEFT='', TAG=replace', $
                    '1, BASE,, ROW,Frame', $
