@@ -762,12 +762,12 @@ pro gsfit_readframe, bridge,state,task
         if count gt 0 then begin
           for k=0, count-1 do begin
             if  afit.CHISQR lt l[match[k]].CHISQR or ~state.replace_if_better or (l[match[k]].CHISQR eq 0 and afit.CHISQR gt 0)then begin
-               comp=l[match[k]].CHISQR eq afit.CHISQR?'=':(afit.CHISQR lt l[match[k]].CHISQR?'<':'>')
-               message,string(afit.CHISQR,comp,l[match[k]].CHISQR,x[j],y[j],time_idx,format="('New CHISQR=',g0,a0,g0,', replacement made @[x=',g0,', y=',g0,', t=',g0,']!')"),/info 
                (state.fit).remove,match[k]
-               state.fit.Add,afit
+               state.fit.Add,afit 
+               comp=l[match[k]].CHISQR eq afit.CHISQR?'=':(l[match[k]].CHISQR gt afit.CHISQR?'<':'>')
+               message,string(afit.CHISQR,comp,l[match[k]].CHISQR,x[j],y[j],time_idx,format="('New CHISQR=',g0,a0,g0,', replacement made @[x=',g0,', y=',g0,', t=',g0,']!')"),/info 
             endif else begin
-              comp=afit.CHISQR eq l[match[k]].CHISQR?'=':'>'
+              comp=l[match[k]].CHISQR eq afit.CHISQR?'=':'>'
               message,string(afit.CHISQR,comp,l[match[k]].CHISQR,x[j],y[j],time_idx,format="('New CHISQR=',g0,a0,g0,', no replacement made @[x=',g0,', y=',g0,', t=',g0,']!')"),/info
             endelse
           endfor
