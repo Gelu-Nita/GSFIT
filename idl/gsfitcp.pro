@@ -123,7 +123,7 @@ pro gsfitcp_set_bridges, nbridges,new=new,force=force
   
 pro gsfitcp_set_maps, datafile
   common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
-  gsfit_readtb,datafile,maps
+  maps=eovsa_maps2gsfit(datafile,/sfu)
 end
 
 pro gsfitcp_add_task, task, remove_existent=remove_existent
