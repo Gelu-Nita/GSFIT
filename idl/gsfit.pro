@@ -303,6 +303,9 @@ pro gsfit_draw,state,draw
     ;wset,state.wPixMap
     wset,wdatamap
     sz=size((*state.pmaps))
+    sz_data=size((*state.pmaps).data)
+    sz_rms=size((*state.pmaps).rms)
+    has_rms_map=sz_rms[0] eq sz_data[0]
     npol=sz[2]
     if npol eq 2 then begin
       if pol_idx eq 0 then begin
@@ -313,16 +316,19 @@ pro gsfit_draw,state,draw
         displaymap.id=id
         displaymap.data=((*state.pmaps)[freq_idx, 0,time_idx].data+(*state.pmaps)[freq_idx, 1,time_idx].data)
         spectrum=((*state.pmaps)[*, 0,time_idx]).data>0+((*state.pmaps)[*, 1,time_idx]).data>0
-        err=((*state.pmaps).rms)[*, 0,time_idx]>0+((*state.pmaps).rms)[*, 1,time_idx]>0
+        err=has_rms_map?((*state.pmaps)[*, 0,time_idx]).rms>0+((*state.pmaps)[*, 1,time_idx]).rms>0$
+            :((*state.pmaps).rms)[*, 0,time_idx]>0+((*state.pmaps).rms)[*, 1,time_idx]>0
       endif else begin
         displaymap=(*state.pmaps)[freq_idx, pol_idx-1,time_idx]
         spectrum=((*state.pmaps)[*, pol_idx -1,time_idx]).data>0
-        err=((*state.pmaps).rms)[*, pol_idx-1,time_idx]>0
+        err=has_rms_map?((*state.pmaps)[*, pol_idx-1,time_idx]).rms>0$
+           :((*state.pmaps).rms)[*, pol_idx-1,time_idx]>0
       endelse
     endif else begin
       displaymap=(*state.pmaps)[freq_idx, pol_idx,time_idx]
       spectrum=((*state.pmaps)[*, pol_idx ,time_idx]).data>0
-      err=((*state.pmaps).rms)[*, pol_idx ,time_idx]>0
+      err=has_rms_map?((*state.pmaps)[*, pol_idx ,time_idx]).rms>0$
+           :((*state.pmaps).rms)[*, pol_idx ,time_idx]>0
     endelse
       
       
@@ -361,7 +367,8 @@ pro gsfit_draw,state,draw
     widget_control,state.wy,get_value=j
     spectrum=reform(spectrum[i,j,*])
     rmsweight=state.header.info.rms
-    err_spectrum=(err+rmsweight*median(err)/freq)
+    err_spectrum=has_rms_map? reform((err[i,j,*]+rmsweight*median(err[i,j,*])/freq)) $
+                :(err+rmsweight*median(err)/freq)
     
     total_flux=total(spectrum,/nan)
     widget_control,state.wspectrum.totalflux,set_value=total_flux
@@ -817,22 +824,29 @@ pro gsfit_sendfittask,bridge,state,task
   widget_control,state.lib.wMaxParms,get_value=MaxParms
   ParGuess=[[temporary(GuessParms)],[temporary(MinParms)],[temporary(MaxParms)]]
   aparms=(eparms=dblarr(npix, n_elements(state.header.info.parms_out)))
-
+  
+  sz_data=size((*state.pmaps).data)
+  sz_rms=size((*state.pmaps).rms)
+  has_rms_map=sz_rms[0] eq sz_data[0]
 
   flux_roi=reform((*state.pmaps)[task.fmin:task.fmax,*,task.t].data[ij[0,*],ij[1,*]],npix,nfreq,npol)
-  err=reform(((*state.pmaps).rms)[task.fmin:task.fmax,*,task.t],nfreq,npol)
+  err=has_rms_map?reform((*state.pmaps)[task.fmin:task.fmax,*,task.t].rms[ij[0,*],ij[1,*]],npix,nfreq,npol)$
+      :reform(((*state.pmaps).rms)[task.fmin:task.fmax,*,task.t],nfreq,npol)
   if npol eq 1 then begin
     FOR i = 0, npix-1 DO BEGIN
       spec_in[i,*,0]=flux_roi[i,*,0]>0; only I STOKES fluxes
-      spec_in[i,*,2]=err[*,0]+rmsweight*median(err)/freq; only I STOKES errors
+      spec_in[i,*,2]=has_rms_map?err[i,*,0]+rmsweight*median(err[i,*,*])/freq $
+                     :err[*,0]+rmsweight*median(err)/freq; only I STOKES errors
       ;the second term attempts to account for the frequency-dependent spatial resolution
     ENDFOR
   endif else begin
     FOR i = 0, npix-1 DO BEGIN
       spec_in[i,*,0]=flux_roi[i,*,0]>0
-      spec_in[i,*,2]=err[*,0]+rmsweight*median(err[*,0])/freq
+      spec_in[i,*,2]=has_rms_map?err[i,*,0]+rmsweight*median(err[i,*,0])/freq $
+                    :err[*,0]+rmsweight*median(err[*,0])/freq
       spec_in[i,*,1]=flux_roi[i,*,1]>0
-      spec_in[i,*,3]=err[*,1]+rmsweight*median(err[*,1])/freq
+      spec_in[i,*,3]=has_rms_map? err[i,*,1]+rmsweight*median(err[i,*,1])/freq $
+                    :err[*,1]+rmsweight*median(err[*,1])/freq
     ENDFOR  
   endelse
 

@@ -99,6 +99,9 @@ for i=0, n_elements(maps)-1 do begin
 endfor
 maps=temporary(mapcube)
 skip:
+sz_data=size(maps.data)
+sz_rms=size(maps.rms)
+has_rms_map=sz_rms[0] eq sz_data[0]
 sz=size(maps[0].data)
 nx=sz[1]
 ny=sz[2]
@@ -127,6 +130,7 @@ if maps[0].datatype eq 'Brightness Temperature' then begin
   for i=0,dim[1]-1 do begin
     for j=0,dim[2]-1 do begin
       maps[*,i,j].data*=1/coeff_arr
+      if has_rms_map then maps[*,i,j].rms*=1/coeff_arr else $
       maps[*,i,j].rms*=1/coeff
     endfor
   endfor
@@ -194,7 +198,7 @@ if ~keyword_set(no_rms) then begin
 end
 
 ; if conversion to sfu has not been explicitely requested by setting the /sfu keyword
-; the flux maps are converte back to TB be fore returning the map structure
+; the flux maps are converte back to TB before returning the map structure
 if ~keyword_set(sfu) then begin
   if maps[0].datatype eq 'Flux' then begin
     if ~tag_exist(maps,'dataunits') then begin
@@ -207,16 +211,16 @@ if ~keyword_set(sfu) then begin
     endif else maps[*].rmsunits='K
     maps[*].datatype='Brightness Temperature'
     for i=0, n_elements(maps)-1 do maps[i].id=strreplace(maps[i].id,'Tb','')
+    sz_data=size(maps.data)
+    sz_rms=size(maps.rms)
+    has_rms_map=sz_rms[0] eq sz_data[0]
     for i=0,dim[1]-1 do begin
       for j=0,dim[2]-1 do begin
         maps[*,i,j].data*=coeff_arr
-        maps[*,i,j].rms*=coeff
+        maps[*,i,j].rms*=(has_rms_map?coeff_arr:coeff)
       endfor
     endfor
   endif
 endif
-
-
-
 return,maps
 end
