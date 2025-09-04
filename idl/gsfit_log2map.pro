@@ -85,9 +85,12 @@ function gsfit_log2map,fitxfile,full_size=full_size,header=header,_extra=_extra
       afit=fit[idx]
       npix=(size(afit))[1]
       for i=0, npol-1 do begin
-        maps.datamaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.data,nfreq,npix,npol))[*,*,i]))
-        maps.errmaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.errdata,nfreq,npix,npol))[*,*,i]))
-        maps.fitmaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.specfit,nfreq,npix,npol))[*,*,i]))
+;        maps.datamaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.data,nfreq,npix,npol))[*,*,i]))
+;        maps.errmaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.errdata,nfreq,npix,npol))[*,*,i]))
+;        maps.fitmaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.specfit,nfreq,npix,npol))[*,*,i]))
+          maps.datamaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.data,nfreq,npol,npix))[*,i,*]))
+          maps.errmaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.errdata,nfreq,npol,npix))[*,i,*]))
+          maps.fitmaps[*,i,j].data[afit.x,afit.y]=reform(transpose((reform(afit.specfit,nfreq,npol,npix))[*,i,*]))
       end
       maptags=tag_names(maps)
       fittags=tag_names(afit)
