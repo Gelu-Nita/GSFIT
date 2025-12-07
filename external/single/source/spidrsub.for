@@ -39,7 +39,7 @@ CCsyn		      X=residual(FUNDAT(I,J),FitFun(X1,X2))
 ccspi	write(*,*)nx1,nx2,y
     2 continue
 	!RRChi2=Y/(NX1-NPar)
-      RRChi2=Y/(2*NX1-NPar) !2*NX1 accounts for dual polarization
+      RRChi2=Y/(2d0*NX1-NPar) !2*NX1 accounts for dual polarization
       Y=sqrt(Y/NX2/NX1)
       if (K.eq.0) then
          ErrMx=sqrt(DEL)
@@ -144,7 +144,7 @@ C==============End movie
       ITmax0=500
       NiterADD= 2 ! 0 !3 !-3
     1 ITmax=ITmax0 !1000
-      If(Nshake.EQ.1) Par(:)=PARguess(:)
+      If(Nshake.EQ.1) Par(:)=PARguess(:)*(1+rand(Int(Par(5))))  !2025-11-01 I discovered that nShake=1 repeated nShake=0 (Par(:)=PARguess(:))
       If(Nshake.EQ.2) Par(:)=PARguess(:)/3.
             If(Nshake.EQ.3) Par(:)=PARguess(:)*1.5
       If(Nshake.EQ.4) Par(:)=PARguess(:)/5.  

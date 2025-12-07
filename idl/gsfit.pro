@@ -1356,9 +1356,7 @@ pro gsfit_event,event
                          skip_import:
                        end  
    state.wSelectTarget: begin
-                          libpath=dialog_pickfile(filter=((!version.os_family eq 'Windows')?'*.dll':'*.so'),$
-                            title='Please select a gxfit executable routine',$
-                            path=(file_dirname(file_dirname((ROUTINE_INFO('gsfit',/source)).path,/mark),/mark))+((!version.os_family eq 'Windows')?'win':'unix'),/read)
+                          libpath=gsfit_select_lib()
                           if file_exist(libpath) then begin
                             info=gsfit_libinfo(libpath)
                             if n_elements(info) eq 0 then begin
@@ -1377,7 +1375,6 @@ pro gsfit_event,event
                               gsfit_create_input_widgets,wInputBase,info,input_widgets=input_widgets
                               widget_control,state.lib.wLibPath, set_value=info.path
                               state=rep_tag_value(state,create_struct(input_widgets,'wLibPath',state.lib.wLibPath),'lib')
-;                            end
                           endif
                         end   
    state.wAbort:begin
@@ -1759,7 +1756,7 @@ pro gsfit,nthreads
       /bitmap,tooltip='Select Compiled Fitting Routine')
     info=gsfit_libinfo()
     if size(info,/tname) eq 'UNDEFINED' then info=gsfit_libinfo(/get)
-    wLibPath=widget_label( wSettingsToolbarBase,/dynamic,value=info.path)    
+    wLibPath=widget_label( wSettingsToolbarBase,/dynamic,value=info.path[0])    
        
   
     gsfit_create_input_widgets,wInputBase,info,input_widgets=input_widgets

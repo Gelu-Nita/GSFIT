@@ -1,23 +1,6 @@
 function gsfit_libinfo,libpath,getlib=getlib
   entry_point:
-  if keyword_set(getlib) then begin
-    case !version.os_family of
-      'Windows':begin
-        libpath=file_search(getenv('gsfitpath'),'unix',/mark)+'gs_fit_1D.dll'
-        if ~file_test(libpath) then begin
-          libpath=dialog_pickfile(title='Please select a gsfit DLL or shared library')
-          if ~file_test(libpath) then message,'No valid DLL or shared library selected, not able to go on....'
-        endif
-      end
-
-      else: begin
-        libpath = gsfit_libpath()
-        if (libpath EQ !NULL) THEN $
-          message, 'Unable to locate or build a valid shared library. Not able to go on....', /info $
-        ELSE message, 'Using user-local compiled library from gsfit_binaries.', /info
-      end
-    endcase
-  endif
+  if keyword_set(getlib) then libpath=gsfit_select_lib()
   if size(libpath,/tname) eq 'STRING' then begin
     if file_test(libpath) then begin
       get_function=!version.os_family eq 'Windows'?['GET_TABLES','GET_MW_FIT']:['get_tables_','get_mw_fit_']
@@ -28,9 +11,11 @@ function gsfit_libinfo,libpath,getlib=getlib
         message,'Fit library symbole case mismatch, trying to change it...',/info
         CATCH, /CANCEL
       ENDIF
-
       res=call_external(libpath, get_function[0], /d_value,/unload)
-    endif else  message,'Invalid library path provided, not able to go on....'
+    endif else  begin
+      mesage,'Invalid library path provided, not able to go on....',/info
+      return,!NULL
+    endelse
   endif else begin
     if file_test('libinfo.inp') then begin
       restore,'libinfo.inp'

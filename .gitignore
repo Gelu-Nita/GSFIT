@@ -1,0 +1,4 @@
+#------------------------------------------
+# Completely exclude the not yet ready for public realease transfer library
+#------------------------------------------
+external/transfer/

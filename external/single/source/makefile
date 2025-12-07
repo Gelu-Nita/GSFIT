@@ -1,12 +1,13 @@
-FC = gfortran # fortran compiler
+FC = gfortran  # Fortran compiler
 
-TARGET_LIB = fit_Spectrum_Kl.so # target lib
+TARGET_LIB = fit_Spectrum_Kl.so
+
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
-	FFLAGS = -ffixed-line-length-0 -march=native -O3 -fPIC # F flags
+    FFLAGS = -ffixed-line-length-0 -march=native -O3 -fPIC -std=legacy -Wno-argument-mismatch
 endif
 ifeq ($(UNAME_S),Darwin)
-	FFLAGS = -ffixed-line-length-0 -march=native -O3 -fPIC -static-libgfortran # F flags
+    FFLAGS = -ffixed-line-length-0 -march=native -O3 -fPIC -static-libgfortran -std=legacy -Wno-argument-mismatch
 endif
 
 objects1 = Calc_GS_Spec_hom.o angular.o spidrsub.o FitFun.o ResolvedSpectrum.o klein.o
@@ -18,20 +19,25 @@ $(TARGET_LIB): $(objects2) $(objects1)
 $(objects2): fit_Spectrum_Kl.for
 	$(FC) -o $(objects2) $(FFLAGS) -c fit_Spectrum_Kl.for
 
-Calc_GS_Spec_hom.o : 
+Calc_GS_Spec_hom.o:
 	$(FC) -c $(FFLAGS) Calc_GS_Spec_hom.for
-angular.o : 
+
+angular.o:
 	$(FC) -c $(FFLAGS) angular.for
-spidrsub.o : 
+
+spidrsub.o:
 	$(FC) -c $(FFLAGS) spidrsub.for
-FitFun.o : 
+
+FitFun.o:
 	$(FC) -c $(FFLAGS) FitFun.for
-ResolvedSpectrum.o : 
+
+ResolvedSpectrum.o:
 	$(FC) -c $(FFLAGS) ResolvedSpectrum.for
-klein.o : 
+
+klein.o:
 	$(FC) -c $(FFLAGS) klein.f
 
-.PHONY : clean
-clean :
+.PHONY: clean
+clean:
 	-rm -f $(objects1) $(objects2)
 	echo Clean done

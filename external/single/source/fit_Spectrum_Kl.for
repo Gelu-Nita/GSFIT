@@ -123,7 +123,7 @@ Cc    If a combination of two polarization inputs is provided, the user can sele
                  Get_Tables=2.   
                         Open(8,File='Long_input.txt')
        !Write(8,126)'parm=', '      Default value', '    Name, Units'
-       Write(8,77)  'Nparms;', 7, '; ;user ;Number of fit Parms' 
+       Write(8,77)  'Nparms;', 5, '; ;user ;Number of fit Parms' 
        Write(8,77)  'Angular Code;',  0, '; ;user ;0L for PK, 1L for FK'
        Write(8,77)  'Npix;', 128, '; ;data ;Number of pixels sent to dll' 
        !Write(8,77)  'NpicY;', 128, ';Number of pixels along y axes' 
@@ -139,7 +139,8 @@ Cc    If a combination of two polarization inputs is provided, the user can sele
       Write(8,7)'Flux Threshold;',1.,';sfu*GHz',' ; user ;Flux threshold to be fitted' 
       Write(8,7)'Pixel Area;',4.,';arcsec^2',' ;data ;Number of pixels along y axes' 
       Write(8,7)'LOS Depth;',8.,';arcsec ',';user ;LOS depth (assumed)'     
-      Write(8,7)'E_min;',0.015d0,';MeV ;user',';Min energy in PLW (assumed)'       
+      Write(8,7)'E_min;',0.015d0,';MeV ;user',';Min energy in PLW (assumed)'    
+      Write(8,7)'chi2 threshold;',1d0,';  ;user',';thresh4chi2' ! 2025.11.24 added for chi2 thresholding   
                    close(8)
 
                        Open(8,File='Parms_input.txt')
@@ -148,13 +149,13 @@ Cc    If a combination of two polarization inputs is provided, the user can sele
      &, ';Non-thermal density' 
        Write(8,8) 'B;',  4d0,';',1.d-2,';',3d1,';', '1d2G '
      &,  ';Magnetic field'
-      Write(8,8)'theta;',60.,';',22.d0,';',87d0,';','deg',
+      Write(8,8)'theta;',60.,';',10.d0,';',90d0,';','deg',
      &';Viewing angle to B' 
       Write(8,8)'n_th;',10d0,';',1d-2,';',6d2,';', '1d9 cm^-3', 
      & ';Thermal density'
       Write(8,8)'Delta;',4.5,';',1.7d0,';',15d0,';','No',
      & ';PLW spectral index'     
-      Write(8,8)'E_max;',5d0,';',0.1d0,';',1d1,';','MeV',
+      Write(8,8)'E_max;',2d0,';',0.1d0,';',1d1,';','MeV',
      &';Max energy in PLW'   
        Write(8,8) 'T_e;',5d0,';',1.5d0,';',6d1,';','MK',';Temperature'        
       Write(8,8)'Res1;',5d0,';',0.2,';',0.2d2,';', ' ',';Not used'       
@@ -169,6 +170,8 @@ Cc    If a combination of two polarization inputs is provided, the user can sele
                    
                        Open(8,File='Parms_out.txt')
        !Write(8,126)'parm=', '      Default value', '    Name, Units'
+       
+       
       Write(8,7)'n_nth;',1d7,';cm^-3'
      &, ';Non-thermal density \pm err' 
        Write(8,7) 'B;',  4d2, ';G '
@@ -203,21 +206,16 @@ c126      FORMAT(1x,a10,2x,a20,2x,a10,a30)
 
 
         real*8 function GET_MW_FIT(argc, argv)
-            implicit none
-            interface
-              subroutine SPIDER(N_dat_in,r_inp,ParmsIn,fr_in,spec_in,ArrParms,ErrParms,spec_out)
-                INTEGER*8 :: N_dat_in,r_inp,ParmsIn,fr_in,spec_in,ArrParms,ErrParms,spec_out
-              end
-            end interface
-            INTEGER*8:: argc, argv(*)
+c             implicit none     
+!GCC$ ATTRIBUTES DLLEXPORT :: get_mw_fit
+
             
 
 
-!!            !integer, intent(in)                   :: argc
-!!            integer*8, intent(in)                   :: argc ! for x64
-!!            !integer, intent(in), dimension(argc)  :: argv
-!!            integer*8, intent(in), dimension(argc)  :: argv
-
+            !integer, intent(in)                   :: argc
+            integer*8, intent(in)                   :: argc ! for x64
+            !integer, intent(in), dimension(argc)  :: argv
+            integer*8, intent(in), dimension(argc)  :: argv
        !      real*8 status,test8,cpa0
             !!integer, intent(in)                   :: arg2
            	!open(9,file='D:\GS_Modeling\DLL_Tested\Test.dat')
@@ -240,12 +238,12 @@ c     & %val(argv(3)))
 
             
             !Get_MW_Slice= cpa0 !status !1
-            return
+                    
         end   
 
 
 
-      !program
+           !program
       subroutine 
      & SPIDER(N_dat_in,r_inp,ParmsIn,fr_in,spec_in,ArrParms,ErrParms
      &,spec_out) !(xxx_in,yyy_in)  ! Fitting of Func(X1,X2).
@@ -262,9 +260,9 @@ c	 common/AllDat/AllData(43,40,358)
 	     common /NType/IAType
                      common/Fit_case/N_case_d,N_case_f
 C	common/ParGuess/
-      !Integer*4 N_dat_in(4)
+      !Integer*4 (4)
       Integer*4 N_dat_in(6)
-      Real*8 ParGuess(15),r_inp(6),fr_in(N_dat_in(4)),ParmsIn(15,3),
+      Real*8 ParGuess(15),r_inp(7),fr_in(N_dat_in(4)),ParmsIn(15,3),
      & ArrParms(N_dat_in(3),8),
      & ErrParms(N_dat_in(3),8),
      & spec_in(N_dat_in(3),N_dat_in(4),4),
@@ -281,7 +279,7 @@ C	common/ParGuess/
      &,ErrNth(N_dat_in(3)),ErrDelta1(N_dat_in(3)),ErrData(N_dat_in(3)),
      & RChi2(N_dat_in(3))
      &,ArrT(N_dat_in(3)),ErrT(N_dat_in(3))
-C		     & FFitR(N_dat_in(3),N_dat_in(4),N_dat_in(5)),
+C		     & FFitR(N_dat_in(3),N_dat_in(4),N_dat_in(5)),         r_inp(7)  ! 2025.11.24 added for chi2 thresholding
 C         & FFitL(N_dat_in(3),N_dat_in(4),N_dat_in(5)),
 C
 
@@ -320,8 +318,8 @@ C     close(1)
           Npic=N_dat_in(3)
            !NpicY=N_dat_in(4)
           Nfreq=N_dat_in(4)
-          N_case_f=N_dat_in(5)
-          N_case_d=N_dat_in(6)          
+          N_case_f=N_dat_in(5) !Fitting mode
+          N_case_d=N_dat_in(6)  !Stokes Data        
           
         STEP0  =r_inp(1)
         EPS    =r_inp(2)
@@ -329,6 +327,7 @@ C     close(1)
         are_arc=r_inp(4)
         dep_arc=r_inp(5)
         E_min  =r_inp(6)
+        thresh4chi2=r_inp(7)  ! 2025.11.24 added for chi2 thresholding
       
       
       ParGuess(:)=ParmsIn(:,1) 
@@ -535,27 +534,47 @@ C           ! !$OMP PARALLEL DO
 		call SpecPixel(Nx,freqdata,Flcp,Frcp,ErrFlcp,ErrFrcp) !Call the time profile to fit with 
 									!the trapping function
 
-	     TestFlux=sum(Fundat)
+	     !TestFlux=sum(Fundat)
 	     TestFluxR=sum(Fundat(:,1))
 	     TestFluxL=sum(Fundat(:,2))
+           TestFlux=TestFluxR+TestFluxL
 	     StocksV=TestFluxR-TestFluxL
       
-
+           
       
-	     If(StocksV.lt.0) Par(3)=180.-Par(3) !Change trial viewing angle for L polarization
+                
+	     !If(StocksV.lt.0.and.N_case_d.gt.1) Par(3)=180.-Par(3) !Change trial viewing angle for L polarization if RL data are available (2025.11.24)
+           If(StocksV.lt.0.and.N_case_d.gt.1.and.N_case_f.gt.1) Par(3)=180.-Par(3) !Change trial viewing angle for L polarization if RL data are available (2025.11.24)
       
 		    !print*,'TestFlux=',TestFlux,'Nx #',Nx,'Ny #',Ny  
 
 	     !If(TestFlux.le.22.OR.(TestFlux.ge.23.AND.TestFlux.le.32)) then ! 40 for unfolded model
+           !Do not fit if the total flux in the spectrum is below the user-defined thershold
 	     If(TestFlux.le.(Fl_thr)) then ! 40 for unfolded model
 	     !If(TestFlux.le.22) then ! 40 for unfolded model
 	     !print*,'TestFlux=',TestFlux
           !print*,'TestFlux=',TestFlux,'Nx #',Nx,'Ny #',Ny  
 	     go to 2104
-	     End If
-         
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC        print*,'TestFlux=',TestFlux,'Nx #',Nx,'Ny #',Ny 
-	!Pause
+          End If
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+          
+         ! 2025.11.24 added for chi2 thresholding
+         ! 2025.11.24 Checking if the data are consistent with a constant spectrum at the AvFlux
+          testchi2=0
+          Ivalid_fit=1
+          !AvFlux=TestFlux/(1d0*NX1)
+          AvFluxR=TestFluxR/(1d0*NX1)
+          AvFluxL=TestFluxL/(1d0*NX1)
+          AvFlux=AvFluxR+AvFluxL
+          Do I=1,NX1
+              testchi2=testchi2+(FUNDAT(I,1)+FUNDAT(I,2)-AvFlux)**2/(ErrDat(I,1)**2+ErrDat(I,2)**2)
+          End Do
+              testchi2=testchi2/(1d0*(NX1-NPAR))
+              If(testchi2.lt.thresh4chi2) then
+              Ivalid_fit=0
+              go to 2103
+              End If
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC              
 	
 
 
@@ -672,14 +691,21 @@ ccspi	End Do
            If(Npar.lt.7) ErrT(NX)=0d0                            
 
 
-	
+	    If(RedChi2.gt.testchi2) Ivalid_fit=0 !In this case the GS fit has worse metrics than the flat trial 'AvFlux' spectrum and, thus, not valid
 
-			
+Cc++++++++++++++
 
-Cc++++++++++++++below we consider the case of symmetric magnetic trap: integration time is reduced
-Cc			by the factor of 2: JMu changes 1 to 30 rather than 1 to 60			
+          !Here we replace the fit solution and chi^2 by the constant level (mean flux values) and their corresponding chi^2 if (1) testchi2 is smaller than the user-defined threshold or 
+                                                                                                                              ! (2) testchi2 is smaller than the chi2 derived from the fit
 			
-		
+2103       Continue
+           If(Ivalid_fit.EQ.0) then
+              FFitR(Nx,:)=AvFluxR*freqdata(:)/freqdata(:)
+              FFitL(Nx,:)=AvFluxL*freqdata(:)/freqdata(:)
+              RChi2(NX)=testchi2
+           End If 
+CC==================================          
+           
 
 2104		Continue
 
