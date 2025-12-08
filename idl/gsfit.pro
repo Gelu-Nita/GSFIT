@@ -45,7 +45,7 @@ if keyword_set(fastcode_update) and tag_exist(state.header.info,'fastcode') and 
              if count then parms[i]=rinput[idx]*(arcsec2cm^2)
            end  
       'DR':begin 
-             idx=where(rnames eq 'LOSDEPTH',conut)
+             idx=where(rnames eq 'LOSDEPTH',count)
              if count then parms[i]=rinput[idx]*arcsec2cm
            end  
       'T_0':begin 

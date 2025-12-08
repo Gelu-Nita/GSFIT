@@ -8,7 +8,7 @@ function gsfit_fastcode,array=array
   if !version.os_family eq 'Windows' then begin
     renderer=gx_findfile(keyword_set(array)?'mw_transfer_arr.pro':'gs_transfer_dp.pro')
   endif else  $
-    renderer=file_search('$SSW',keyword_set(array)?'mwtransferarr.pro':'mwtransfer.pro')
+    renderer=gx_findfile('mw_transfer_arr.pro')
 
   dirpath=file_dirname(renderer,/mark)
   cd,dirpath
