@@ -20,7 +20,7 @@ end
 
 pro gsfit_fastcode_update,state,fastcode_update
 
-if keyword_set(fastcode_update) and tag_exist(state.header.info,'fastcode') and ptr_valid(state.pmaps) then begin
+if keyword_set(fastcode_update) and size(state.header.info.fastcode,/tname) eq 'STRUCT' and ptr_valid(state.pmaps) then begin
   Npix=1l
   Nvox=1l
   Nfreq=state.header.info.fastcode.pixdim[0]
@@ -31,13 +31,47 @@ if keyword_set(fastcode_update) and tag_exist(state.header.info,'fastcode') and 
   state.header.info.fastcode.spectrum.x.axis=10^logfreqrange
   parms=state.header.info.fastcode.parms.value
   names=strupcase(strcompress(state.header.info.fastcode.parms.name,/rem))
-  nnames=strupcase(strcompress((state.header.info.nparms.name),/rem))
   ninput=state.header.info.nparms.value
+  nnames=strupcase(strcompress((state.header.info.nparms.name),/rem))
+  if tag_exist(state.header.info.fastcode,'nparms') then begin
+    nparms=state.header.info.fastcode.nparms.value
+    nnparms=strcompress(state.header.info.fastcode.nparms.name,/rem)
+    idx=where(nnparms eq 'N_pix',count)
+    if count eq 1 then nparms[idx]=Npix
+    idx=where(nnparms eq 'N_vox',count)
+    if count eq 1 then nparms[idx]=Nvox
+    idx=where(nnparms eq 'N_freq',count)
+    if count eq 1 then nparms[idx]=Nfreq
+    idx=where(nnparms eq 'PK_key',count)
+    if count eq 1 then begin
+      idx_code=where(nnames eq 'ANGULARCODE',count_code)
+      if count_code then nparms[idx]=ninput[idx_code]
+    endif
+    state.header.info.fastcode.nparms.value=nparms
+  endif
+ 
+
   rnames=strupcase(strcompress((state.header.info.rparms.name),/rem))
   rinput=state.header.info.rparms.value
   pnames=strupcase(strcompress((state.header.info.parms_in.name),/rem))
   pinput=state.header.info.parms_in.guess
   arcsec2cm=7.27d7
+  
+  if tag_exist(state.header.info.fastcode,'rparms') then begin
+    rparms=state.header.info.fastcode.rparms.value
+    nrparms=strcompress(state.header.info.fastcode.rparms.name,/rem)
+    idx=where(nrparms eq 'dS',count)
+    if count eq 1 then begin
+      idx_ds=where(rnames eq 'PIXELAREA',count)
+      if count then rparms[idx]=rinput[idx_ds]*(arcsec2cm^2)
+    endif
+    idx=where(nrparms eq 'f_min',count)
+    if count eq 1 then rparms[idx]=freq[0]
+    idx=where(nrparms eq 'df',count)
+    if count eq 1 then rparms[idx]=df
+    state.header.info.fastcode.rparms.value=rparms
+  endif
+  
   for i=0,n_elements(names)-1 do begin
     case names[i] of
       'DS':begin 
@@ -96,7 +130,7 @@ if keyword_set(fastcode_update) and tag_exist(state.header.info,'fastcode') and 
                if count then parms[i]=df
               end  
       'DIST_ANG': begin 
-                   idx=where(nnames eq 'ANGULARCODE',idx)
+                   idx=where(nnames eq 'ANGULARCODE',count)
                    if count then parms[i]=ninput[idx]
                   end 
       else:
@@ -222,8 +256,11 @@ pro gsfit_draw,state,draw
       if fastcode_over[0] eq 1 then begin
         Npix=1l
         Nvox=1L
+        gsfit_fastcode_update,state,1
         rowdata=make_array([npix,state.header.info.fastcode.pixdim],/float)
         parms=double(reform(state.header.info.fastcode.parms.value, npix,nvox, n_elements(state.header.info.fastcode.parms.value)))
+        rparms=tag_exist(state.header.info.fastcode,'rparms')?state.header.info.fastcode.rparms.value:!Null
+        nparms=tag_exist(state.header.info.fastcode,'nparms')?state.header.info.fastcode.nparms.value:!Null
         res=execute(state.header.info.fastcode.execute)
         guess_freq=reform(datain[0,*])
         guess_flux=pol_idx eq 0?reform(rowdata[*,*,0,0]+rowdata[*,*,1,0]):reform(rowdata[*,*,pol_idx-1,0])
@@ -266,7 +303,7 @@ pro gsfit_draw,state,draw
               case pnames[i] of
                 'T_E':begin
                   te_idx=where(names eq 'T_0',count)
-                  if count then parms[te_idx]=fit.(i)*1e6
+                  if count then parms[te_idx]=fit.(i)
                 end
                 'E_MAX':begin
                   emax_idx=where(names eq 'EMAX',count)
@@ -288,7 +325,7 @@ pro gsfit_draw,state,draw
                   nth_idx=where(names eq 'N_0',count)
                   if count then parms[nth_idx]=fit.(i)
                 end
-                'N_B':begin
+                'N_NTH':begin
                   nb_idx=where(names eq 'N_B',count)
                   if count then parms[nb_idx]=fit.(i)
                 end
@@ -306,6 +343,16 @@ pro gsfit_draw,state,draw
             npix=1l
             nvox=1l
             parms=reform(parms, npix,nvox, n_elements(parms))
+            rparms=tag_exist(state.header.info.fastcode,'rparms')?state.header.info.fastcode.rparms.value:!Null
+            nparms=tag_exist(state.header.info.fastcode,'nparms')?state.header.info.fastcode.nparms.value:!Null
+;            if nparms ne !Null then begin
+;              nparms[2]=n_elements(freq)
+;              state.header.info.fastcode.pixdim[0]=nparms[2]
+;            endif
+;            if rparms ne !Null then begin
+;              freqlist=freq
+;              rparms[1]=0
+;            endif
             rowdata=make_array([npix,state.header.info.fastcode.pixdim],/float)
             res=execute(state.header.info.fastcode.execute)
             fast_freq=reform(datain[0,*])
@@ -326,6 +373,10 @@ pro gsfit_draw,state,draw
          ;y=0.7
          y=0.4
          tags=tag_names(fit)
+         idx=where(tags eq 'T_E',count)
+         if count then fit.(idx)*=1e-6
+         idx=where(tags eq 'errT_E',count)
+         if count then fit.(idx)*=1e-6
          for k=0,n_elements(state.header.parnames)-1 do begin
           idx=where(tags eq strcompress(strupcase(state.header.parnames[k]),/rem),count1)
           erridx=where(tags eq strcompress(strupcase(state.header.errparnames[k]),/rem),count2)
@@ -1356,9 +1407,9 @@ pro gsfit_event,event
                          skip_import:
                        end  
    state.wSelectTarget: begin
-                          libpath=gsfit_select_lib()
+                          libpath=gsfit_select_lib(gs=str_pos(state.header.info.fastcode.execute,'gs_transfer_dp'),fastcode=renderer)
                           if file_exist(libpath) then begin
-                            info=gsfit_libinfo(libpath)
+                            info=gsfit_libinfo(libpath,fastcode=renderer)
                             if n_elements(info) eq 0 then begin
                               answ=dialog_message('Restoring the GSFIT settings from the GSFIT library failed!')
                               return
@@ -1521,6 +1572,9 @@ pro gsfit_event,event
                                     answ=dialog_message('Restoring the GSFIT settings from the GSFIT library failed!')
                                     return
                                    endif
+                                   header=state.header
+                                   header=rep_tag_value(header,info,'info')
+                                   state=rep_tag_value(state,header,'header')
                                    state.header.info=info
                                    widget_control,state.lib.wNinput, set_value=info.nparms.value
                                    widget_control,state.lib.wRinput, set_value=info.rparms.value

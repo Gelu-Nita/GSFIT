@@ -1,15 +1,12 @@
-function gsfit_fastcode,array=array
+function gsfit_fastcode,renderer=renderer
   cdir=curdir()
   catch, error_stat
   if error_stat ne 0 then begin
     catch, /cancel
     goto,invalid_renderer
   end
-  if !version.os_family eq 'Windows' then begin
-    renderer=gx_findfile(keyword_set(array)?'mw_transfer_arr.pro':'gs_transfer_dp.pro')
-  endif else  $
-    renderer=gx_findfile('mw_transfer_arr.pro')
-
+  default, renderer,'mw_transfer_arr.pro'
+  renderer=gx_findfile(renderer)
   dirpath=file_dirname(renderer,/mark)
   cd,dirpath
   break_file, renderer, dsk_log, dir, filename, ext

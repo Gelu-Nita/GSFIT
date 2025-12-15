@@ -1,4 +1,4 @@
-FUNCTION gsfit_select_lib, UPDATE=update, SELECT=select
+FUNCTION gsfit_select_lib, UPDATE=update, SELECT=select,GS=gs,FASTCODE=fastcode
   COMPILE_OPT IDL2
 
   ;--------------------------------------
@@ -77,6 +77,11 @@ FUNCTION gsfit_select_lib, UPDATE=update, SELECT=select
   desc = [desc,'0, LABEL, Select one of GSFIT external libraries listed below, LEFT']
   desc = [desc,'0, LIST, ' + items + ', TAG=CHOICE, SET_VALUE=' + STRTRIM(sel, 2)]
   
+  gs_set  = KEYWORD_SET(GS) ? 'SET_VALUE=1' : 'SET_VALUE=0'
+  
+  desc = [desc,'0, LABEL, Comparison Fast Code Library, LEFT']
+  desc = [desc, '1, BASE,, ROW,/FRAME']
+  desc=[desc, '2, BUTTON, mw_transferr_arr|gs_transfer_dp, EXCLUSIVE, ROW, TAG=fastlib, '+gs_set]
   ; Row of two checkboxes
   if strupcase(!version.os_family) ne strupcase('Windows') then begin
     desc = [desc, '1, BASE,, ROW']
@@ -106,6 +111,9 @@ FUNCTION gsfit_select_lib, UPDATE=update, SELECT=select
 
   ; Final checkbox states (override initial keyword suggestions)
   do_update = tag_exist(form,'update')?form.update[0]:0
+  
+  fastcode= tag_exist(form,'fastlib')?form.fastlib[0]:0
+  fastcode=fastcode eq 0?'mw_transferr_arr.pro':'gs_transfer_dp.pro'
  
   lib = gsfit_libpath(root,update=do_update)
 
