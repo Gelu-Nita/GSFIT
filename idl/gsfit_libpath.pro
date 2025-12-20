@@ -1,9 +1,9 @@
-function gsfit_libpath,root,update=update,unix=unix
+function gsfit_libpath,root,update=update,unix=unix,full=full
  ;Returns the precompiled WinOS name*.dll 
   ;returns the path to name*.so library on Linux if found in the var/tmp/gsfit_binaries, 
   ;or build it, if not found or /update is requested 
   if n_elements(root) eq 0 then return,!null 
-  root_path=(file_search(getenv('gsfitpath'),root))[0]
+  root_path=keyword_set(full)? root:(file_search(getenv('gsfitpath'),root))[0]
   if ~file_test(root_path) then begin
     message,'fatal error: the root path provided does not exist! no valid library path to be returned!',/info
     return,!null

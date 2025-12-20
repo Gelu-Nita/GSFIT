@@ -12,42 +12,55 @@ pro gsfit_fit2guess,state
     pinput[where(pnames eq 'N_TH')]=fit.(where(fnames eq 'N_TH'))*1d-9
     pinput[where(pnames eq 'E_MAX')]=fit.(where(fnames eq 'E_MAX'))
     pinput[where(pnames eq 'T_E')]=fit.(where(fnames eq 'T_E'))*1e-6
+    
+    idx=where(pnames eq 'N_NTH2', count)
+    if count gt 0 then begin
+      pinput[where(pnames eq 'N_NTH2')]=fit.(where(fnames eq 'N_NTH2'))*1d-7
+      pinput[where(pnames eq 'B2')]=fit.(where(fnames eq 'B2'))*1d-2
+      pinput[where(pnames eq 'THETA2')]=fit.(where(fnames eq 'THETA2'))
+      pinput[where(pnames eq 'DELTA2')]=fit.(where(fnames eq 'DELTA2'))
+      pinput[where(pnames eq 'N_TH2')]=fit.(where(fnames eq 'N_TH2'))*1d-9
+    end
+    
     state.header.info.parms_in.guess=pinput
     widget_control,state.lib.wGuessParms,set_value=pinput
   end
 end
 
 
-pro gsfit_fastcode_update,state,fastcode_update
-
-if keyword_set(fastcode_update) and size(state.header.info.fastcode,/tname) eq 'STRUCT' and ptr_valid(state.pmaps) then begin
+pro gsfit_fastcode_update,state,fit=fit,parms=parms,nparms=nparms,rparms=rparms,rowdata=rowdata,fastcode_execute=fastcode_execute
+widget_control,state.wfastcode_select,get_uvalue=fastcode
+if size(fastcode,/tname) eq 'STRUCT' then begin
   Npix=1l
-  Nvox=1l
-  Nfreq=state.header.info.fastcode.pixdim[0]
+  Nvox=n_elements(state.header.parnames) gt 8 ? 2L : 1l
+  Nfreq=fastcode.pixdim[0]
   freq=minmax(state.header.freq)*1d9
   logfreqrange=alog10(freq)
   df=(logfreqrange[1]-logfreqrange[0])/(nfreq-1)
   logfreq=logfreqrange[0]+findgen(nfreq)*df
-  state.header.info.fastcode.spectrum.x.axis=10^logfreqrange
-  parms=state.header.info.fastcode.parms.value
-  names=strupcase(strcompress(state.header.info.fastcode.parms.name,/rem))
+  fastcode.spectrum.x.axis=10^logfreqrange
+  names=strupcase(strcompress(fastcode.parms.name,/rem))
   ninput=state.header.info.nparms.value
   nnames=strupcase(strcompress((state.header.info.nparms.name),/rem))
-  if tag_exist(state.header.info.fastcode,'nparms') then begin
-    nparms=state.header.info.fastcode.nparms.value
-    nnparms=strcompress(state.header.info.fastcode.nparms.name,/rem)
+  parms=fastcode.losparms[*,0:Nvox-1,*]
+  
+  if tag_exist(fastcode,'nparms') then begin
+    nparms=fastcode.nparms.value
+    nnparms=strcompress(fastcode.nparms.name,/rem)
     idx=where(nnparms eq 'N_pix',count)
     if count eq 1 then nparms[idx]=Npix
     idx=where(nnparms eq 'N_vox',count)
     if count eq 1 then nparms[idx]=Nvox
     idx=where(nnparms eq 'N_freq',count)
     if count eq 1 then nparms[idx]=Nfreq
-    idx=where(nnparms eq 'PK_key',count)
-    if count eq 1 then begin
+    pk_idx=where(nnparms eq 'PK_key',pk_count)
+    if pk_count eq 1 then begin
       idx_code=where(nnames eq 'ANGULARCODE',count_code)
-      if count_code then nparms[idx]=ninput[idx_code]
+      if count_code then begin
+        nparms[pk_idx]=ninput[idx_code]
+      endif
     endif
-    state.header.info.fastcode.nparms.value=nparms
+    fastcode.nparms.value=nparms
   endif
  
 
@@ -57,9 +70,9 @@ if keyword_set(fastcode_update) and size(state.header.info.fastcode,/tname) eq '
   pinput=state.header.info.parms_in.guess
   arcsec2cm=7.27d7
   
-  if tag_exist(state.header.info.fastcode,'rparms') then begin
-    rparms=state.header.info.fastcode.rparms.value
-    nrparms=strcompress(state.header.info.fastcode.rparms.name,/rem)
+  if tag_exist(fastcode,'rparms') then begin
+    rparms=fastcode.rparms.value
+    nrparms=strcompress(fastcode.rparms.name,/rem)
     idx=where(nrparms eq 'dS',count)
     if count eq 1 then begin
       idx_ds=where(rnames eq 'PIXELAREA',count)
@@ -69,81 +82,185 @@ if keyword_set(fastcode_update) and size(state.header.info.fastcode,/tname) eq '
     if count eq 1 then rparms[idx]=freq[0]
     idx=where(nrparms eq 'df',count)
     if count eq 1 then rparms[idx]=df
-    state.header.info.fastcode.rparms.value=rparms
+    fastcode.rparms.value=rparms
   endif
+  
+  vox1=Nvox-1
+  vox2=Nvox-2
   
   for i=0,n_elements(names)-1 do begin
     case names[i] of
       'DS':begin 
              idx=where(rnames eq 'PIXELAREA',count)
-             if count then parms[i]=rinput[idx]*(arcsec2cm^2)
+             if count then parms[*,*,i]=rinput[idx]*(arcsec2cm^2)
            end  
       'DR':begin 
              idx=where(rnames eq 'LOSDEPTH',count)
-             if count then parms[i]=rinput[idx]*arcsec2cm
+             if count then parms[*,*,i]=rinput[idx]*arcsec2cm
            end  
       'T_0':begin 
               idx=where(pnames eq 'T_E',count)
-              if count then parms[i]=pinput[idx]*1e6
+              if count then parms[*,*,i]=pinput[idx]*1e6
             end   
       'EMIN':begin 
               idx=where(rnames eq 'E_MIN',count)
-              if count then parms[i]=rinput[idx]
+              if count then parms[*,*,i]=rinput[idx]
              end  
       'EMAX':begin 
                idx=where(pnames eq 'E_MAX',count)
-               if count then parms[i]=pinput[idx]
+               if count then parms[*,*,i]=pinput[idx]
              end 
       'DELTA1':begin 
                 idx=where(pnames eq 'DELTA',count)
                 if count then begin
-                  parms[i]=pinput[idx]
-                  parms[where(names eq 'DIST_E')]=3
+                  parms[*,vox1,i]=pinput[idx]
+                  parms[*,vox1,where(names eq 'DIST_E')]=3
+                endif
+                idx=where(pnames eq 'DELTA2',count)
+                if count then begin
+                  parms[*,vox2,i]=pinput[idx]
+                  parms[*,vox2,where(names eq 'DIST_E')]=3
                 endif
                end
       'KAPPA':begin
                 idx=where(pnames eq 'KAPPA',count)
                 if count then begin
-                  parms[i]=pinput[idx]
-                  parms[where(names eq 'DIST_E')]=6
+                  parms[*,vox1,i]=pinput[idx]
+                  parms[*,vox1,where(names eq 'DIST_E')]=6
+                endif
+                idx=where(pnames eq 'KAPPA2',count)
+                if count then begin
+                  parms[*,vox2,i]=pinput[idx]
+                  parms[*,vox2,where(names eq 'DIST_E')]=6
                 endif
                end            
       'N_0': begin 
-              if count then parms[i]=pinput[where(pnames eq 'N_TH')]*1d9
+              idx=where(pnames eq 'N_TH',count)
+              if count then parms[*,vox1,i]=pinput[idx]*1d9
+              idx=where(pnames eq 'N_TH2',count)
+              if count then parms[*,vox2,i]=pinput[idx]*1d9
              end 
       'N_B':begin 
               idx=where(pnames eq 'N_NTH',count)
-              if count then parms[i]=pinput[idx]*1d7
+              if count then parms[*,vox1,i]=pinput[idx]*1d7 
+              idx=where(pnames eq 'N_NTH2',count)
+              if count then parms[*,vox2,i]=pinput[idx]*1d7
             end  
       'B':begin 
            idx=where(pnames eq 'B',count)
-           if count then parms[i]=pinput[idx]*100
+           if count then parms[*,vox1,i]=pinput[idx]*100
+           idx=where(pnames eq 'B2',count)
+           if count then parms[*,vox2,i]=pinput[idx]*100
           end 
       'THETA':begin 
                 idx=where(pnames eq 'THETA',count)
-                if count then parms[i]=pinput[idx]
+                if count then parms[*,vox1,i]=pinput[idx]
+                idx=where(pnames eq 'THETA2',count)
+                if count then parms[*,vox2,i]=pinput[idx]
               end  
       'F_MIN':begin
-                if count then parms[i]=freq[0]
+                parms[*,*,i]=freq[0]
               end  
       'DF':   begin
-               if count then parms[i]=df
+               parms[*,*,i]=df
               end  
       'DIST_ANG': begin 
                    idx=where(nnames eq 'ANGULARCODE',count)
-                   if count then parms[i]=ninput[idx]
+                   if count then parms[*,*,i]=keyword_set(pk_count)?0:ninput[idx]
                   end 
       else:
     endcase
   endfor
-  state.header.info.fastcode.parms.value=parms
+  if size(fit,/tname) eq 'STRUCT' then begin
+    pnames=tag_names(fit)
+    for i=0,n_elements(pnames)-1 do begin
+      case pnames[i] of
+        'T_E':begin
+          te_idx=where(names eq 'T_0',count)
+          if count then parms[*,*,te_idx]=fit.(i)
+        end
+        'E_MAX':begin
+          emax_idx=where(names eq 'EMAX',count)
+          if count then parms[*,*,emax_idx]=fit.(i)
+        end
+        'DELTA':begin
+          delta_idx=where(names eq 'DELTA1',count)
+          if count then parms[*,vox1,delta_idx]=fit.(i)
+          en_idx=where(names eq 'DIST_E',count)
+          if count then parms[*,vox1,en_idx]=3
+        end
+        'DELTA2':begin
+          delta_idx=where(names eq 'DELTA1',count)
+          if count then parms[*,vox2,delta_idx]=fit.(i)
+          en_idx=where(names eq 'DIST_E',count)
+          if count then parms[*,vox2,en_idx]=3
+        end
+        'KAPPA':begin
+          kappa_idx=where(names eq 'KAPPA',count)
+          if count then parms[*,vox1,kappa_idx]=fit.(i)
+          en_idx=where(names eq 'DIST_E',count)
+          if count then parms[*,vox1,en_idx]=6
+        end
+        'KAPPA2':begin
+          kappa_idx=where(names eq 'KAPPA',count)
+          if count then parms[*, vox2,kappa_idx]=fit.(i)
+          en_idx=where(names eq 'DIST_E',count)
+          if count then parms[*,vox2,en_idx]=6
+        end
+        'N_TH':begin
+          nth_idx=where(names eq 'N_0',count)
+          if count then parms[*,vox1,nth_idx]=fit.(i)
+        end
+        'N_TH2':begin
+          nth_idx=where(names eq 'N_0',count)
+          if count then parms[*,vox2,nth_idx]=fit.(i)
+        end
+        'N_NTH':begin
+          nb_idx=where(names eq 'N_B',count)
+          if count then parms[*,vox1,nb_idx]=fit.(i)
+        end
+        'N_NTH2':begin
+          nb_idx=where(names eq 'N_B',count)
+          if count then parms[*,vox2,nb_idx]=fit.(i)
+        end
+        'B':begin
+          b_idx=where(names eq 'B',count)
+          if count then parms[*,vox1,b_idx]=fit.(i)
+        end
+        'B2':begin
+          b_idx=where(names eq 'B',count)
+          if count then parms[*,vox2,b_idx]=fit.(i)
+        end
+        'THETA':begin
+          theta_idx=where(names eq 'THETA',count)
+          if count then parms[*,vox1,theta_idx]=fit.(i)
+        end
+        'THETA2':begin
+          theta_idx=where(names eq 'THETA',count)
+          if count then parms[*,vox2,theta_idx]=fit.(i)
+        end
+        else:
+      endcase
+    endfor
+  end  
+  rparms=tag_exist(fastcode,'rparms')?fastcode.rparms.value:!Null
+  nparms=tag_exist(fastcode,'nparms')?fastcode.nparms.value:!Null
+  rowdata=fastcode.rowdata
+  fastcode_execute=fastcode.execute
+  
 end  
-
 end
 
 pro gsfit_draw,state,draw
   if ~ptr_valid(state.pmaps) or ~keyword_set(draw) then return
-
+  tvlct,rgb_curr,/get
+  psave=!p
+  widget_control,state.wPalette,get_uvalue=rgb
+  tvlct,rgb
+  widget_control,state.wBackground,get_value=back_select
+  if back_select[0] then gx_rgb_white2black
+  
+  
   cmdot = STRING([183B]) ; Middle dot
   cbullet = STRING([149B]) ; Bullet
   ctab = STRING([9B]) ; tab
@@ -164,9 +281,6 @@ pro gsfit_draw,state,draw
   widget_control,state.wy,get_value=j,get_uvalue=ypix
 
   freq= state.header.freq
-  rgb_curr=bytarr(3,256)
-  tvlct,rgb_curr,/get
-  psave=!p
   widget_control,state.wspectrum.charsize, get_value=charsize
   !p.multi=0
   if (draw ne 0) then begin
@@ -245,8 +359,8 @@ pro gsfit_draw,state,draw
     
     widget_control,state.wspectrum.fixed,get_value=fixed
     if fixed[0] then widget_control,state.wspectrum.range,get_value=yrange
-    widget_control,state.wFastCode,get_value=fastcode_over
-          
+    widget_control,state.wfastcode_overplot,get_value=fastcode_over
+    legend=[]      
     if total_flux gt 0 then begin 
       plot,freq,spectrum,/xlog,/ylog,/xsty,/ysty,psym=2,xrange=xrange,yrange=yrange,$
         xtitle='Frequency (GHz)',ytitle='Flux [sfu]',title=string(i,j,format="('Flux [',i3,',',i3,']')"),ymargin=[6,6],charsize=charsize
@@ -254,22 +368,21 @@ pro gsfit_draw,state,draw
       oplot,freq[[freq_idx,freq_idx]],10^!y.crange,linesty=2,color=250
       
       if fastcode_over[0] eq 1 then begin
-        Npix=1l
-        Nvox=1L
-        gsfit_fastcode_update,state,1
-        rowdata=make_array([npix,state.header.info.fastcode.pixdim],/float)
-        parms=double(reform(state.header.info.fastcode.parms.value, npix,nvox, n_elements(state.header.info.fastcode.parms.value)))
-        rparms=tag_exist(state.header.info.fastcode,'rparms')?state.header.info.fastcode.rparms.value:!Null
-        nparms=tag_exist(state.header.info.fastcode,'nparms')?state.header.info.fastcode.nparms.value:!Null
-        res=execute(state.header.info.fastcode.execute)
-        guess_freq=reform(datain[0,*])
-        guess_flux=pol_idx eq 0?reform(rowdata[*,*,0,0]+rowdata[*,*,1,0]):reform(rowdata[*,*,pol_idx-1,0])
-        oplot,guess_freq,guess_flux,color=100
-        fmin=widget_info(state.wMinFreq,/droplist_select)
-        fmax=widget_info(state.wMaxFreq,/droplist_select)
-        guess_flux=spline(guess_freq,guess_flux,freq)
-        CHISQR=total(((spectrum-guess_flux)/err_spectrum)^2,/double)/(2*n_elements(freq)-(state.header.info.nparms.value)[0])
-        gx_plot_label,0.01,0.9,string(CHISQR,format="('Guess  CHISQR=',g0)"),/ylog,/xlog,color=100,charsize=1.2*charsize,charthick=2
+        gsfit_fastcode_update,state,parms=parms,nparms=nparms,rparms=rparms,rowdata=rowdata,fastcode_execute=fastcode_execute
+        if size(fastcode_execute,/tname) eq 'STRING' then begin
+          res=execute(fastcode_execute)
+          guess_freq=reform(datain[0,*])
+          guess_flux=pol_idx eq 0?reform(rowdata[*,*,0,0]+rowdata[*,*,1,0]):reform(rowdata[*,*,pol_idx-1,0])
+          oplot,guess_freq,guess_flux,color=100
+          fmin=widget_info(state.wMinFreq,/droplist_select)
+          fmax=widget_info(state.wMaxFreq,/droplist_select)
+          guess_flux=spline(guess_freq,guess_flux,freq)
+          CHISQR=total(((spectrum-guess_flux)/err_spectrum)^2,/double)/(2*n_elements(freq)-(state.header.info.nparms.value)[0])
+          if back_select[1] then begin
+           al_legend,string(CHISQR,format="('Guess  CHISQR=',g0)"),/top,/left,charsize=1.5*charsize,textcolor=0,box=0,back='grey'
+          endif else $
+           al_legend,string(CHISQR,format="('Guess  CHISQR=',g0)"),/top,/left,charsize=1.5*charsize,textcolor=100,box=0
+        end
       endif
     endif
      
@@ -295,88 +408,35 @@ pro gsfit_draw,state,draw
         oplot,freq[fit.fmin:fit.fmax],specfit,color=color[pol_idx],thick=2
          
         if fastcode_over[0] eq 2 then begin 
-            gsfit_fastcode_update,state,1
-            parms=double(state.header.info.fastcode.parms.value)
-            names=strupcase(strcompress(state.header.info.fastcode.parms.name,/rem))
-            pnames=tag_names(fit)
-            for i=0,n_elements(pnames)-1 do begin
-              case pnames[i] of
-                'T_E':begin
-                  te_idx=where(names eq 'T_0',count)
-                  if count then parms[te_idx]=fit.(i)
-                end
-                'E_MAX':begin
-                  emax_idx=where(names eq 'EMAX',count)
-                  if count then parms[emax_idx]=fit.(i)
-                end
-                'DELTA':begin
-                  delta_idx=where(names eq 'DELTA1',count)
-                  if count then parms[delta_idx]=fit.(i)
-                  en_idx=where(names eq 'DIST_E',count)
-                  if count then parms[en_idx]=3
-                end
-                'KAPPA':begin
-                  kappa_idx=where(names eq 'KAPPA',count)
-                  if count then parms[kappa_idx]=fit.(i)
-                  en_idx=where(names eq 'DIST_E',count)
-                  if count then parms[en_idx]=6
-                end
-                'N_TH':begin
-                  nth_idx=where(names eq 'N_0',count)
-                  if count then parms[nth_idx]=fit.(i)
-                end
-                'N_NTH':begin
-                  nb_idx=where(names eq 'N_B',count)
-                  if count then parms[nb_idx]=fit.(i)
-                end
-                'B':begin
-                  b_idx=where(names eq 'B',count)
-                  if count then parms[b_idx]=fit.(i)
-                end
-                'THETA':begin
-                  theta_idx=where(names eq 'THETA',count)
-                  if count then parms[theta_idx]=fit.(i)
-                end
-                else:
-              endcase
-            endfor
-            npix=1l
-            nvox=1l
-            parms=reform(parms, npix,nvox, n_elements(parms))
-            rparms=tag_exist(state.header.info.fastcode,'rparms')?state.header.info.fastcode.rparms.value:!Null
-            nparms=tag_exist(state.header.info.fastcode,'nparms')?state.header.info.fastcode.nparms.value:!Null
-;            if nparms ne !Null then begin
-;              nparms[2]=n_elements(freq)
-;              state.header.info.fastcode.pixdim[0]=nparms[2]
-;            endif
-;            if rparms ne !Null then begin
-;              freqlist=freq
-;              rparms[1]=0
-;            endif
-            rowdata=make_array([npix,state.header.info.fastcode.pixdim],/float)
-            res=execute(state.header.info.fastcode.execute)
-            fast_freq=reform(datain[0,*])
-            fast_flux=pol_idx eq 0?(reform(rowdata[*,*,0,0]+rowdata[*,*,1,0])):reform(rowdata[*,*,pol_idx-1,0])
-            oplot,fast_freq,fast_flux,color=250,thick=2
-            fit_flux=spline(fast_freq,fast_flux,freq)
-
-            nfreq=n_elements(freq)
-            specfit_flux=(pol_idx eq 0) ? total(reform(fit.specfit,nfreq,npol),2):fit.specfit[*,pol_idx-1]
-            CHISQR=total(((spectrum-specfit_flux)/err_spectrum)^2,/double)/(2*n_elements(freq)-(state.header.info.nparms.value)[0])
-            fcCHISQR=total(((spectrum-fit_flux)/err_spectrum)^2,/double)/(2*n_elements(freq)-(state.header.info.nparms.value)[0])
-            gx_plot_label,0.01,0.9,string(fcCHISQR,format="('Fast Code  CHISQR=',g0)"),/ylog,/xlog,color=250,charsize=1.2*charsize,charthick=2
-            gx_plot_label,0.01,0.8,string(CHISQR,format="('Fit  CHISQR=',g0)"),/ylog,/xlog,color=150,charsize=1.2*charsize,charthick=2
+            gsfit_fastcode_update,state,fit=fit,parms=parms,nparms=nparms,rparms=rparms,rowdata=rowdata,fastcode_execute=fastcode_execute
+            if size(fastcode_execute,/tname) eq 'STRING' then begin
+              res=execute(fastcode_execute)
+              fast_freq=reform(datain[0,*])
+              fast_flux=pol_idx eq 0?(reform(rowdata[*,*,0,0]+rowdata[*,*,1,0])):reform(rowdata[*,*,pol_idx-1,0])
+              oplot,fast_freq,fast_flux,color=250,thick=2
+              fit_flux=spline(fast_freq,fast_flux,freq)
+  
+              nfreq=n_elements(freq)
+              specfit_flux=(pol_idx eq 0) ? total(reform(fit.specfit,nfreq,npol),2):fit.specfit[*,pol_idx-1]
+              CHISQR=total(((spectrum-specfit_flux)/err_spectrum)^2,/double)/(2*n_elements(freq)-(state.header.info.nparms.value)[0])
+              fcCHISQR=total(((spectrum-fit_flux)/err_spectrum)^2,/double)/(2*n_elements(freq)-(state.header.info.nparms.value)[0])
+              if back_select[1] then begin
+                al_legend,[string(CHISQR,format="('Fit CHISQR=',g0)"),string(fcCHISQR,format="('Fast Code  CHISQR=',g0)")],/top,/left,$
+                        charsize=1.5*charsize,textcolor=0,box=0,spacing=2,back='grey'
+              endif else $
+                al_legend,[string(CHISQR,format="('Fit CHISQR=',g0)"),string(fcCHISQR,format="('Fast Code  CHISQR=',g0)")],/top,/left,$
+                        charsize=1.5*charsize,textcolor=250,box=0,spacing=2         
+           end
         end
          
          
          c_parm=200
-         ;y=0.7
-         y=0.4
          tags=tag_names(fit)
          idx=where(tags eq 'T_E',count)
          if count then fit.(idx)*=1e-6
          idx=where(tags eq 'errT_E',count)
          if count then fit.(idx)*=1e-6
+         
          for k=0,n_elements(state.header.parnames)-1 do begin
           idx=where(tags eq strcompress(strupcase(state.header.parnames[k]),/rem),count1)
           erridx=where(tags eq strcompress(strupcase(state.header.errparnames[k]),/rem),count2)
@@ -388,15 +448,16 @@ pro gsfit_draw,state,draw
             else:parmstr=str_replace(str_replace(str_replace(str_replace(str_replace(strcompress(string(state.header.parnames[k],fit.(idx),fit.(erridx),state.header.units[k],format="(a10,'=(',g16.3,'!N!9+!3',g16.3,'!N)',a10)")),'+0','+'),'+0','+'),'^','!E'),'e+','x10!U'),'e-','x10!U-')
             endcase
           end
-          gx_plot_label,0.01,y,parmstr,/ylog,/xlog,color=c_parm,charsize=1.2*charsize,charthick=2
-          y-=0.05
+          legend=[legend,parmstr]
          endfor
-         
-     end
+         if back_select[1] then begin
+          al_legend,legend,/bottom,/left,charsize=1.5*charsize,textcolor=0,spacing=2,box=0,back='grey'
+         endif else al_legend,legend,/bottom,/left,charsize=1.5*charsize,textcolor=c_parm,spacing=2,box=0
     end
     tvlct,rgb_curr
     !p=psave
   end
+ end 
 end
 
 pro gsfit_refit,state,start=start
@@ -1061,7 +1122,13 @@ pro gsfit_event,event
              draw=1
             end 
    state.wpalette: begin
+                     tvlct,rgb0,/get
+                     widget_control,event.id,get_uvalue=rgb
+                     tvlct,rgb
                      xloadct,/silent,/block
+                     tvlct,rgb,/get
+                     widget_control,event.id,set_uvalue=rgb
+                     tvlct,rgb0
                      draw=1
                    end  
    state.wimport: begin
@@ -1158,7 +1225,6 @@ pro gsfit_event,event
                       state.lock=1
                       state.datafile=file
                       widget_control,state.main_base,base_set_title='GSFIT ['+file+']'
-                      fastcode_update=1
                       draw=1
                      endif
                  endif             
@@ -1314,7 +1380,6 @@ pro gsfit_event,event
                  widget_control,state.lib.wNinput,get_value=ninput
                  ninput[3]=frange[1]-frange[0]+1
                  widget_control,state.lib.wNinput,set_value=ninput
-                 fastcode_update=1
                  if a.start eq 2 then begin
                    info=state.header.info
                    cpinput=rep_tag_value(rep_tag_value(info,state.datafile,'datapath'),task,'task')
@@ -1406,26 +1471,29 @@ pro gsfit_event,event
                          end
                          skip_import:
                        end  
+   
    state.wSelectTarget: begin
-                          libpath=gsfit_select_lib(gs=str_pos(state.header.info.fastcode.execute,'gs_transfer_dp'),fastcode=renderer)
+                          libpath=gsfit_select_lib()
                           if file_exist(libpath) then begin
-                            info=gsfit_libinfo(libpath,fastcode=renderer)
-                            if n_elements(info) eq 0 then begin
-                              answ=dialog_message('Restoring the GSFIT settings from the GSFIT library failed!')
-                              return
-                            endif
-                            newinfo:
-                            fastcode_update=1
-                              if tag_exist(state.header,'freq') then freq=state.header.freq
-                              if tag_exist(state.header,'time') then time=state.header.time
-                              if tag_exist(state.header,'pol') then pol=state.header.pol
-                              if tag_exist(state.header,'refmap') then refmap=state.header.refmap
-                              header=gsfit_info2header(info,freq=freq,pol=pol,time=time,refmap=refmap)
-                              state=rep_tag_value(state,header,'header')
-                              wInputBase=widget_info(event.top,find_by_uname='InputBase')
-                              gsfit_create_input_widgets,wInputBase,info,input_widgets=input_widgets
-                              widget_control,state.lib.wLibPath, set_value=info.path
-                              state=rep_tag_value(state,create_struct(input_widgets,'wLibPath',state.lib.wLibPath),'lib')
+                            widget_control,state.lib.wLibPath, get_value=oldpath
+                            if libpath ne oldpath then begin
+                              info=gsfit_libinfo(libpath)
+                              if n_elements(info) eq 0 then begin
+                                answ=dialog_message('Restoring the GSFIT settings from the GSFIT library failed!')
+                                return
+                              endif
+                              newinfo:
+                                if tag_exist(state.header,'freq') then freq=state.header.freq
+                                if tag_exist(state.header,'time') then time=state.header.time
+                                if tag_exist(state.header,'pol') then pol=state.header.pol
+                                if tag_exist(state.header,'refmap') then refmap=state.header.refmap
+                                header=gsfit_info2header(info,freq=freq,pol=pol,time=time,refmap=refmap)
+                                state=rep_tag_value(state,header,'header')
+                                wInputBase=widget_info(event.top,find_by_uname='InputBase')
+                                gsfit_create_input_widgets,wInputBase,info,input_widgets=input_widgets
+                                widget_control,state.lib.wLibPath, set_value=info.path
+                                state=rep_tag_value(state,create_struct(input_widgets,'wLibPath',state.lib.wLibPath),'lib')
+                             end
                           endif
                         end   
    state.wAbort:begin
@@ -1493,7 +1561,6 @@ pro gsfit_event,event
    state.lib.wGuessParms:begin
                           widget_control,event.id,get_value=value
                           state.header.info.parms_in.guess=value
-                          fastcode_update=1
                           draw=1
                          end 
    state.lib.wMinParms:begin
@@ -1507,7 +1574,6 @@ pro gsfit_event,event
    state.lib.wrinput:begin
                          widget_control,event.id,get_value=value
                          state.header.info.rparms.value=value
-                         fastcode_update=1
                          draw=1
                        end  
    state.lib.wninput:begin
@@ -1516,7 +1582,6 @@ pro gsfit_event,event
                          value[4]=value[4]>1<4
                          widget_control,event.id,set_value=value
                          state.header.info.nparms.value=value
-                         fastcode_update=1
                          draw=1
                        end 
    state.lib.wrms:begin
@@ -1532,18 +1597,16 @@ pro gsfit_event,event
                             answ=dialog_message('Invalid GSFIT settings file!')
                             return
                           endif
-                              if tag_exist(state.header,'freq') then freq=state.header.freq
-                              if tag_exist(state.header,'time') then time=state.header.time
-                              if tag_exist(state.header,'pol') then pol=state.header.pol
-                              if tag_exist(state.header,'refmap') then refmap=state.header.refmap
-                              header=gsfit_info2header(info,freq=freq,pol=pol,time=time,refmap=refmap)
-                              state=rep_tag_value(state,header,'header')
-                              wInputBase=widget_info(event.top,find_by_uname='InputBase')
-                              gsfit_create_input_widgets,wInputBase,info,input_widgets=input_widgets
-                              widget_control,state.lib.wLibPath, set_value=info.path
-                              state=rep_tag_value(state,create_struct(input_widgets,'wLibPath',state.lib.wLibPath),'lib')
-;                            end
-                            fastcode_update=1
+                            if tag_exist(state.header,'freq') then freq=state.header.freq
+                            if tag_exist(state.header,'time') then time=state.header.time
+                            if tag_exist(state.header,'pol') then pol=state.header.pol
+                            if tag_exist(state.header,'refmap') then refmap=state.header.refmap
+                            header=gsfit_info2header(info,freq=freq,pol=pol,time=time,refmap=refmap)
+                            state=rep_tag_value(state,header,'header')
+                            wInputBase=widget_info(event.top,find_by_uname='InputBase')
+                            gsfit_create_input_widgets,wInputBase,info,input_widgets=input_widgets
+                            widget_control,state.lib.wLibPath, set_value=info.path
+                            state=rep_tag_value(state,create_struct(input_widgets,'wLibPath',state.lib.wLibPath),'lib')
                             draw=1
                         endif
                        end   
@@ -1583,14 +1646,11 @@ pro gsfit_event,event
                                    widget_control,state.lib.wMaxParms, set_value=info.parms_in.max
                                    widget_control,state.lib.wLibPath, set_value=info.path
                                    widget_control,state.lib.wrms, set_value=info.rms
-                                   fastcode_update=1
-                                   draw=1
                                  end
                            endcase
                        end   
    state.wCopySettings: begin
                          gsfit_fit2guess,state
-                         fastcode_update=1
                          draw=1
                         end                    
    state.wspectrum.fixed:begin
@@ -1600,7 +1660,21 @@ pro gsfit_event,event
    state.wspectrum.range: draw=1  
    state.wspectrum.charsize: draw=1  
    state.wspectrum.threshold: draw=1   
-   state.wFastCode:draw=event.select                                                                                                                                             
+   state.wfastcode_overplot:draw=event.select  
+   state.wfastcode_select: begin
+                             fastcode_new=gsfit_fastcode(event.str) 
+                             if size(fastcode_new,/tname) eq 'STRUCT' then begin
+                              draw=1
+                              widget_control,event.id,get_uvalue=fastcode_old
+                              if size(fastcode_old,/tname) eq 'STRUCT' then begin
+                                if tag_exist(fastcode_new,'execute') and tag_exist(fastcode_old,'execute')then begin
+                                  if fastcode_new.execute eq fastcode_old.execute then draw=0
+                                endif
+                              endif
+                              widget_control,event.id,set_uvalue=fastcode_new
+                             endif
+                                                         
+                           end                                                                                                                                           
    state.wStart:if event.select then gsfit_start,state   
    state.wBridges: begin
                     widget_control,event.id,get_value=nbridges
@@ -1662,15 +1736,15 @@ pro gsfit_event,event
                          draw=1
                        endelse
                      endif
-                   end                
-                                                                           
+                   end 
+                                  
+   state.wBackground:draw=1                                                                        
    state.wHelp: begin
                  help='http://www.ovsa.njit.edu/wiki/index.php/GSFIT_Help'
                  if !version.os_family eq 'Windows' then spawn,'start /max '+help else answ=dialog_message(' For help, please open ' +help+' in your preffred browser.')    
                 end                                      
    else:
   endcase
-  gsfit_fastcode_update,state,fastcode_update
   widget_control,widget_info(event.top,Find_By_Uname='STATEBASE'),set_uvalue=state
   gsfit_draw,state,draw
 end
@@ -1745,9 +1819,15 @@ pro gsfit,nthreads
     /bitmap,tooltip='Import EOVSA Fits Dataset')
   wOpen= WIDGET_BUTTON(wToolbarBase, VALUE=gx_bitmap(filepath('open.bmp', subdirectory=subdirectory)),$
     /bitmap,tooltip='Upload EOVSA Map Cube')
+  
+  tvlct,rgb0,/get
+  loadct,39,/silent
+  tvlct,rgb,/get
+  tvlct,rgb0
+   
   wPalette = widget_button( wToolbarBase, $
     value=gx_bitmap(filepath('palette.bmp', subdirectory=subdirectory)), $
-    /bitmap,tooltip='Change Color Table')   
+    /bitmap,tooltip='Change Color Table', uvalue=rgb)   
     
   wCursorBase=widget_base(wToolbarBase,/exclusive,/row)
   wCursor= WIDGET_BUTTON(wCursorBase, VALUE=gx_bitmap(filepath('scale_active.bmp', subdirectory=subdirectory)),$
@@ -1863,6 +1943,8 @@ pro gsfit,nthreads
   woptions_base=widget_base(left_panel,/row,/frame)
   wcharsize=cw_objfield(widget_base(woptions_base,/frame),value=!version.os_family eq 'Windows'?1:1,inc=0.1,min=0.1,max=5,label='Plot Charsize: ',font=!defaults.font,xtextsize=6)
   wapplythreshold=cw_bgroup(widget_base(woptions_base,/frame),['Apply Integrated Flux Threshold'],/nonexclusive,font=!defaults.font)
+  woptions_base=widget_base(left_panel,/frame)
+  wBackground=cw_bgroup(woptions_base,['White Plot Background', 'Grey Labels Background'],set_value=[0,0],column=2,/nonexclusive,font=!defaults.font)
   
   wyrangelabel=widget_label(right_panel,xsize=xsize,value=' ',font=!defaults.font,/align_center,uname='xlabel')
   wyrangebase=widget_base(right_panel,/row,/frame)
@@ -1871,10 +1953,15 @@ pro gsfit,nthreads
   wyrangefix=cw_bgroup(widget_base(wyrangebase,/frame),['Fix Y Range'],/nonexclusive,font=!defaults.font)
   widget_control,wyrangefix,sensitive=0 
   wtotalflux=cw_objfield(widget_base(right_panel,/frame),value=0.0,inc=100,label='Bandwith Integrated Flux: ',font=!defaults.font,/indicator,xtextsize=24, units='sfu*GHz')
-  wfastcode=cw_bgroup(widget_base(right_panel,/frame,sensitive=(size(info.fastcode,/tname) eq 'STRUCT')),['No Fast Code Overplot','Guess Solution','Fit Solution'],$
-    set_value=0,/exclusive,/row) 
+  fastcode_base=widget_base(right_panel,/frame,/row)
+  wfastcode_overplot=cw_bgroup(widget_base(fastcode_base),['No Fast Code Overplot','Guess Solution','Fit Solution'],set_value=0,/exclusive,/row) 
   
-  if !version.os_family eq 'Windows' then set_plot,'win' else set_plot,'x'                    
+  wlabel=widget_label(fastcode_base,value='Fast Code: ')
+  isWin=!version.os_family eq 'Windows'
+  wfastcode_select=widget_combobox(fastcode_base,value=isWin ?['gs_transfer_dp.pro','mw_transfer_arr.pro']:'mw_transfer_arr.pro',sensitive=isWin)
+  widget_control,wfastcode_select,set_uvalue=gsfit_fastcode(widget_info(wfastcode_select,/combobox_gettext))
+  
+  if isWin then set_plot,'win' else set_plot,'x'                    
   window,/free,/pixmap,xsiz=xsize,ysiz=xsize
   erase,0
   wpixmap=!d.window                        
@@ -1941,6 +2028,7 @@ pro gsfit,nthreads
     wSaveSettings:wSaveSettings,$
     wResetSettings:wResetSettings,$
     wCopySettings:wCopySettings,$
+    wBackground:wBackground,$
     header:gsfit_info2header(info),$
     wMouse:{Cursor:wCursor,RROI:wRROI,FROI:wFROI,PROI:wPROI,wROISave:wROISave,wROIOpen:wROIOpen},$
     ppd_dev_xrange:[0,0],ppd_dev_yrange:[0,0],$
@@ -1954,11 +2042,11 @@ pro gsfit,nthreads
     yroi:list(), $
     wMinFreq:wMinFreq,$
     wMaxFreq:wMaxFreq,$
-    wFastCode:wFastCode,$
+    wfastcode_overplot:wfastcode_overplot,$
+    wfastcode_select:wfastcode_select,$
     replace_if_better:1,$
     lib:create_struct(input_widgets,'wLibPath',wLibPath)}
   widget_control,state_base,set_uvalue=state  
   XMANAGER, 'gsfit', main_base ,/no_block
-  loadct,39
-  GSFIT_draw,state
+  GSFIT_draw,state,draw
 end

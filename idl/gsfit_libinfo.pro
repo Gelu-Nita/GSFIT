@@ -1,6 +1,6 @@
-function gsfit_libinfo,libpath,getlib=getlib,fastcode=renderer
+function gsfit_libinfo,libpath,getlib=getlib
   entry_point:
-  if keyword_set(getlib) then libpath=gsfit_select_lib(fastcode=renderer)
+  if keyword_set(getlib) then libpath=gsfit_select_lib()
   if size(libpath,/tname) eq 'STRING' then begin
     if file_test(libpath) then begin
       get_function=!version.os_family eq 'Windows'?['GET_TABLES','GET_MW_FIT']:['get_tables_','get_mw_fit_']
@@ -104,15 +104,6 @@ function gsfit_libinfo,libpath,getlib=getlib,fastcode=renderer
   file_delete,'Parms_out.txt',/q
   info={get_function:get_function,nparms:nparms,rparms:rparms,parms_in:parms_in,parms_out:parms_out,path:libpath,rms:4d}
   exit_point:
-  if ~tag_exist(info,'fastcode') then begin
-    info=add_tag(info,gsfit_fastcode(renderer=renderer),'fastcode') 
-  endif else begin
-    info=rep_tag_value(info,gsfit_fastcode(renderer=renderer),'fastcode')
-  endelse
-  if size(info.fastcode,/tname) ne 'STRUCT' then begin
-    info=rem_tag(info,'fastcode')
-    info=add_tag(info,gsfit_fastcode(renderer=renderer),'fastcode')
-  endif
   save,info,file='libinfo.inp'
   return,info
 end

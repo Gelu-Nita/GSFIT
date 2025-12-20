@@ -1,4 +1,4 @@
-function gsfit_fastcode,renderer=renderer
+function gsfit_fastcode,renderer
   cdir=curdir()
   catch, error_stat
   if error_stat ne 0 then begin
@@ -6,23 +6,13 @@ function gsfit_fastcode,renderer=renderer
     goto,invalid_renderer
   end
   default, renderer,'mw_transfer_arr.pro'
-  renderer=gx_findfile(renderer)
-  dirpath=file_dirname(renderer,/mark)
-  cd,dirpath
-  break_file, renderer, dsk_log, dir, filename, ext
-  compile_test=execute('RESOLVE_ROUTINE, filename , /COMPILE_FULL_FILE ,/either')
-  cd,cdir
-  par=ROUTINE_INFO(filename,/par)
-  if par.num_args lt 2 or par.num_kw_args lt 1 then goto,invalid_renderer
-  template=filename+',parms,rowdata'
-  for i=2,par.num_args-1 do template+=','+strlowcase(par.args[i])
-  for i=0,par.num_kw_args-1 do begin
-    if strupcase(par.kw_args[i]) ne 'INFO' then template+=','+strlowcase(par.kw_args[i])+'='+strlowcase(par.kw_args[i])
-  end
-  if execute(filename+',INFO=INFO') then begin
-    if size(info,/tname) ne 'STRUCT' then goto,invalid_renderer
-    return,CREATE_STRUCT('execute',template,info)
-  end
+  info=gx_rendererinfo(renderer)
+  if size(info,/tname) ne 'STRUCT' then goto,invalid_renderer
+  rowdata=make_array([1,info.pixdim],/float)
+  Npix=1
+  Nvox=2
+  losparms=double(transpose(array_replicate(info.parms.value,Npix,Nvox),[1,2,0]))
+  return,CREATE_STRUCT('rowdata',rowdata,'losparms',losparms,info)
   invalid_renderer:
   cd,cdir
   return,0

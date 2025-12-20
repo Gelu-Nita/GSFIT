@@ -1,6 +1,8 @@
-FUNCTION gsfit_select_lib, UPDATE=update, SELECT=select,GS=gs,FASTCODE=fastcode
+FUNCTION gsfit_select_lib, UPDATE=update, SELECT=select
   COMPILE_OPT IDL2
-
+  ;Check the OS
+  isWin=strupcase(!version.os_family) eq strupcase('Windows')
+  
   ;--------------------------------------
   ; Resolve external root from GSFITPATH
   ;--------------------------------------
@@ -63,7 +65,7 @@ FUNCTION gsfit_select_lib, UPDATE=update, SELECT=select,GS=gs,FASTCODE=fastcode
   ; Build the item list string for the LIST field: "a|b|c|..."
   items = labels[0]
   FOR i = 1, n_dirs-1 DO items = items + '|' + labels[i]
-
+  if isWin then items=str_rep(items,'transfer','')
   ;--------------------------------------
   ; Initial states for UPDATE 
   ;--------------------------------------
@@ -76,46 +78,47 @@ FUNCTION gsfit_select_lib, UPDATE=update, SELECT=select,GS=gs,FASTCODE=fastcode
 
   desc = [desc,'0, LABEL, Select one of GSFIT external libraries listed below, LEFT']
   desc = [desc,'0, LIST, ' + items + ', TAG=CHOICE, SET_VALUE=' + STRTRIM(sel, 2)]
-  
-  gs_set  = KEYWORD_SET(GS) ? 'SET_VALUE=1' : 'SET_VALUE=0'
-  
-  desc = [desc,'0, LABEL, Comparison Fast Code Library, LEFT']
-  desc = [desc, '1, BASE,, ROW,/FRAME']
-  desc=[desc, '2, BUTTON, mw_transferr_arr|gs_transfer_dp, EXCLUSIVE, ROW, TAG=fastlib, '+gs_set]
+
   ; Row of two checkboxes
-  if strupcase(!version.os_family) ne strupcase('Windows') then begin
+  if ~isWin then begin
     desc = [desc, '1, BASE,, ROW']
     desc=[desc, '2, BUTTON, Use Existent|Update library, EXCLUSIVE, ROW, TAG=update, '+upd_set]
   end
 
   ; Row with OK / Cancel
   desc = [desc, '1, BASE,, ROW']
-  desc = [desc, '0, BUTTON, OK, QUIT, TAG=OK']
+  desc = [desc, '0, BUTTON, Use Selected, QUIT, TAG=OK']
+  desc = [desc, '0, BUTTON, Select local repository, QUIT, TAG=LOCAL']
   desc = [desc, '2, BUTTON, Cancel, QUIT, TAG=CANCEL']
 
   ;--------------------------------------
   ; Create a modal top-level form.
   ; CW_FORM returns a structure with tags:
-  ;   CHOICE (int), UPDATE (int), UNIX (int), OK, CANCEL, ...
+  ; CHOICE (int), UPDATE (int), UNIX (int), OK, CANCEL, ...
   ;--------------------------------------
   form = CW_FORM(desc, /COLUMN, TITLE='Select GSFIT External Library')
 
-  ; If user pressed Cancel or closed the form, treat as no selection
-  IF (form.OK NE 1L) THEN RETURN, !NULL
 
-  ; CHOICE is the zero-based index of the selected list item
-  choice = form.CHOICE
-  IF (choice LT 0) OR (choice GE n_dirs) THEN RETURN, !NULL
-
-  root = labels[choice]
+  
+  CASE 1 OF
+    form.OK: BEGIN
+              ; CHOICE is the zero-based index of the selected list item
+              choice = form.CHOICE
+              root = labels[choice]
+             END
+    form.LOCAL: BEGIN
+                root=dialog_pickfile(Title='SELECT A LOCAL REPOSITORY ROOT CONTAININGG A GSFIT LIBRARY OR SOURCE CODE',/dir)
+                IF root EQ ''  THEN RETURN, !NULL 
+                full_path=1
+               END         
+    ELSE:RETURN, !NULL
+  ENDCASE
 
   ; Final checkbox states (override initial keyword suggestions)
   do_update = tag_exist(form,'update')?form.update[0]:0
   
-  fastcode= tag_exist(form,'fastlib')?form.fastlib[0]:0
-  fastcode=fastcode eq 0?'mw_transferr_arr.pro':'gs_transfer_dp.pro'
  
-  lib = gsfit_libpath(root,update=do_update)
+  lib = gsfit_libpath(root,update=do_update, full=full_path)
 
   ;--------------------------------------
   ; Validate result
