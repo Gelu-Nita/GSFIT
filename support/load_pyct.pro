@@ -1,3 +1,31 @@
+;+
+; NAME:
+;   load_pyct
+; PURPOSE:
+;   Return the red, green, and blue vectors of a named color table.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   load_pyct [, cmapname] [, r, g, b] [, bw=bw]
+; INPUTS:
+;   None.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   CMAPNAME: color-table name. The default is viridis. Recognized names include the Matplotlib-style tables compiled into this file.
+;   BW: if set, return the grayscale version of the table.
+; OUTPUTS:
+;   R, G, B: named variables that receive the 256-element color vectors.
+; ROUTINES CALLED:
+;   None.
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   None.
+; RESTRICTIONS:
+;   The color tables are stored in this file. An unrecognized name is reported and R, G, and B are left unchanged.
+; MODIFICATION HISTORY:
+;   Written 10-Mar-2020 Gelu M. Nita (gnita@njit.edu)
+;-
+
 pro load_pyct, cmapname, r, g, b, bw=bw
    default,cmapname,'viridis'
    default,bw,0

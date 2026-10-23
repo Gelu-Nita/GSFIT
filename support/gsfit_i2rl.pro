@@ -1,3 +1,31 @@
+;+
+; NAME:
+;   gsfit_i2rl
+; PURPOSE:
+;   Build RR and LL flux cubes from a GSFIT Stokes I fit-map structure for the microwave fast code.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   rlmaps = gsfit_i2rl(maps [, _extra=extra])
+; INPUTS:
+;   MAPS: fit-map structure that contains DATAMAPS, a header frequency vector, and Stokes, frequency, and time tags on the maps.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   _EXTRA: passed to eovsa_maps2gsfit after the RR and LL cube is built. See that routine for SFU, FLUX_THRESHOLD, RMS_MASK, and NO_RMS.
+; OUTPUTS:
+;   RLMAPS: map cube of dimensions [frequency, 2, time] with Stokes LL and RR, or !NULL when a required tag is missing.
+; ROUTINES CALLED:
+;   gsfit_fastcode, add_prop, eovsa_maps2gsfit
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   None.
+; RESTRICTIONS:
+;   DATAMAPS is interpreted as frequency by time, with two output polarizations. An unexpected rank produces a message and !NULL.
+; MODIFICATION HISTORY:
+;   Written 16-Sep-2021 Gelu M. Nita (gnita@njit.edu)
+;   2-Nov-2022 GN: Updated run-time error handling.
+;-
+
 function gsfit_i2rl,maps,_extra=_extra
 if size(maps,/tname) ne 'STRUCT' then begin
   message,'Expected maps structure argument missing!',/info

@@ -1,3 +1,39 @@
+;+
+; NAME:
+;   gsfit_readtb
+; PURPOSE:
+;   Restore a brightness-temperature or flux map cube and arrange it as [frequency, polarization, time].
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   gsfit_readtb, datafile, maps
+; INPUTS:
+;   DATAFILE: file name of an IDL save file, or a map structure that is already in memory.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   MAPS: named variable that receives the normalized cube. When DATAFILE is itself a map structure, the normalized cube is returned in DATAFILE.
+; OUTPUTS:
+;   MAPS: flux maps shaped [frequency, polarization, time]. Brightness-temperature input is converted to sfu. A zero RMS cube can be filled from a frequency-dependent noise ratio entered in a form.
+; ROUTINES CALLED:
+;   gsfit_freqpoltime, valid_map, CW_FORM
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   May open a modal form asking for the noise-ratio intercept and slope when every RMS value is zero.
+; RESTRICTIONS:
+;   The restored structure must be a map cube whose datatype is Brightness Temperature or Flux. A missing datatype is accepted with a warning.
+; MODIFICATION HISTORY:
+;   Written 27-May-2019 Gelu M. Nita (gnita@njit.edu)
+;   10-Mar-2020 GN: Added polarization functionality.
+;   10-Sep-2020 GN: Fixed opening of map cubes with frequency, polarization, and time axes.
+;   22-Nov-2020 GN: Updated while adding EOVSA FITS import.
+;   25-Jun-2021 GN: Fixed a GX_SIMULATOR dependency.
+;   28-Aug-2021 GN: Updated the data-reading routines.
+;   10-Jun-2022 GN: Minor bug fixes.
+;   2-Nov-2022 GN: Updated run-time error handling.
+;   15-Nov-2023 GN: Fixed tag-name consistency.
+;   22-Oct-2026 GN: Replace the inline axis logic with gsfit_freqpoltime.
+;-
+
 pro gsfit_readtb,datafile,maps
   if valid_map(datafile) then begin
     dim=size(datafile,/dim)
@@ -24,55 +60,11 @@ pro gsfit_readtb,datafile,maps
     endif
     endif else message,'WARNING: The restored maps are not registered as brightness temperature maps, proceed with caution!',/info
     maps=temporary(eomaps)
-    sz=size(maps)
-    if sz[0] eq 1 then maps=reform(maps,sz[1],1,1)
-    if sz[0] eq 2 then maps=reform(maps,sz[1],1,sz[2])
-    dim=size(maps,/dim)
     if ~tag_exist(maps,'datatype') then begin
       maps=REP_TAG_VALUE(maps,'Brightness Temperature','datatype')
       maps=REP_TAG_VALUE(maps,'K','dataunits')
     endif
-    if tag_exist(maps,'dimensions') then begin
-      dimensions=maps[0].dimensions
-      if n_elements(dimensions) ne n_elements(dim) then begin
-        message,'Error: Map array dimensions do not match the dimensions tag, operation aborted!',/info
-        return
-      endif
-       case n_elements(dim) of
-        1: begin 
-             case dimensions[0] of
-              'Freq': maps=reform(maps,dim[0],1,1)
-              'Pol': maps=reform(maps,1,dim[0],1)
-               else: maps=reform(maps,1,1,dim[0])
-             endcase
-           end  
-        2: begin
-            case 1 of
-              array_equal(dimensions,['Freq','Pol']): maps=reform(maps,dim[0],dim[1],1)
-              array_equal(dimensions,['Freq','Time']): maps=reform(maps,dim[0],1,dim[1])
-              else: maps=reform(1,maps,dim[0],dim[1])
-            endcase  
-           end
-        else: begin 
-        end   
-       endcase
-      dimensions=['Freq','Pol','Time']
-      dim=size(maps,/dim)
-      maps=rem_tag(maps,'dimensions')
-      maps=add_tag(maps,'dimensions',dimensions)
-      maps=reform(maps,dim[0],dim[1],dim[2])
-    endif else begin
-      ;Here we make some assumptions based on preestablished conventions
-      dimensions=['Freq','Pol','Time']
-      case n_elements(dim) of
-        1: maps=reform(maps,dim[0],1,1)
-        2: maps=reform(maps,dim[0],1,dim[1]);backward compatibility with no polariziation freq-time maps
-        else: maps=reform(maps[0:dim[0]*dim[1]*dim[2]-1],dim[0],dim[1],dim[2]); Remove unexpected dimmensions, if any!!!
-      endcase
-      dim=size(maps,/dim)
-      maps=REP_TAG_VALUE(maps,dimensions,'dimensions')
-      maps=reform(maps,dim[0],dim[1],dim[2])
-    endelse
+    maps=gsfit_freqpoltime(maps)
     compute_rms:
     ;temporary
     if max(maps.rms) eq 0 then begin

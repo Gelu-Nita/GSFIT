@@ -91,7 +91,8 @@ PRO  oploterr, x, y, xerr, yerr, NOHAT=hat, HATLENGTH=hln, ERRTHICK=eth, $
 ;     Previously, if either end of a y error bar was out of plot limits, didn't draw any error bar. Also if hat location
 ;     was outside of plot limits, drew bars at edges of plot. (If no complaints, should be done for x too)
 ;   Fix another case where y error limits are outside of plot box, Kim Tolbert, 4-Nov-2014
-;   
+;   5-May-2019 GN: Included this SSW routine in the GSFIT package. The history above is that of the original.
+;   27-May-2019 GN: Moved with the package restructure.
 ;-
 ;			Check the parameters.
 ;

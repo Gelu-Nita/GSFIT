@@ -1,3 +1,69 @@
+;+
+; NAME:
+;   gsfit
+; PURPOSE:
+;   Widget interface for fitting EOVSA microwave spectra and for sending the fit list to gsfitview.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   gsfit [, nthreads]
+; INPUTS:
+;   None.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   NTHREADS: number of asynchronous fitting bridges. The default is chosen at startup.
+; OUTPUTS:
+;   None. The routine creates the GSFIT widget.
+; ROUTINES CALLED:
+;   gsfit_log2map, gsfit_log2list, gsfit_freqpoltime, gsfitview, gsfitcp, gsfit_energy_computation, eovsa_maps2gsfit, gsfit_readfits
+; COMMENTS:
+;   Spectra are stored on the full header frequency axis. Each pixel keeps its own fmin and fmax window inside that axis. The file also contains the widget's internal routines.
+; SIDE EFFECTS:
+;   Changes the working directory while resolving dependencies, then opens a blocking widget.
+; RESTRICTIONS:
+;   Requires SSW and GX_SIMULATOR. The fitting library is selected through GSFITPATH.
+; MODIFICATION HISTORY:
+;   Written 5-May-2019 Gelu M. Nita (gnita@njit.edu)
+;   8-May-2019 GN: Updated the widget.
+;   14-May-2019 GN: Minor updates.
+;   27-May-2019 GN: Restructured the package.
+;   21-Jun-2019 GN: Updated the Unix distribution.
+;   7-Nov-2019 GN: Incremental upgrade.
+;   13-Nov-2019 GN: Added import of a sequence of EOVSA FITS maps.
+;   10-Mar-2020 GN: Added polarization functionality.
+;   20-May-2020 GN: Fixed the comparison of a fit with the direct fast-code spectrum.
+;   15-Sep-2020 GN: Fixed a path bug.
+;   16-Sep-2020 GN: Fixed a DLL path bug.
+;   18-Feb-2021 GN: Stored header frequencies at single precision.
+;   25-Jun-2021 GN: Fixed a GX_SIMULATOR dependency.
+;   28-Aug-2021 GN: Updated the data-reading routines.
+;   16-Sep-2021 GN: Added functionality and fixed minor bugs.
+;   17-Feb-2022 GN: Replaced IDL_IDLBridge with the SSW IDL_Bridge object.
+;   10-Jun-2022 GN: Minor bug fixes.
+;   23-Aug-2022 GN: Several bug fixes.
+;   2-Nov-2022 GN: Updated run-time error handling.
+;   6-Jan-2023 GN: Fixed free-hand ROI selection.
+;   12-Jan-2023 GN: Fixed a gsfit.pro bug.
+;   12-Apr-2023 GN: Accommodated alternative fitting DLLs.
+;   15-Nov-2023 GN: Fixed tag-name consistency.
+;   21-Dec-2023 GN: Changed RMS scaling.
+;   2-Mar-2024 GN: Display updates and an error-scaling correction.
+;   19-Dec-2024 GN: Added an option to redo fits whose CHISQR is above a threshold.
+;   21-Dec-2024 GN: Added user options for redoing fits, and fixed a redo-fit bug.
+;   4-Jan-2025 GN: Fixed redoing fits, including a single time frame.
+;   15-Jan-2025 GN: Updated refit messages and the default frequency selection.
+;   10-Feb-2025 GN: Fixed a bug affecting recompute actions.
+;   11-Feb-2025 GN: Minor spelling correction.
+;   12-Feb-2025 GN: Fixed a redo-fit bug.
+;   1-Sep-2025 GN: Accommodated spatially resolved data errors.
+;   11-Nov-2025 GN: Updated gsfit.pro.
+;   13-Nov-2025 GN: Updated behavior on Unix systems.
+;   7-Dec-2025 GN: Refactored the repository structure.
+;   8-Dec-2025 GN: Fixed a fast-code call.
+;   15-Dec-2025 GN: Updated GS_FIT_1D and the fast-code selection routines.
+;   19-Dec-2025 GN: Updated fast-code and fitting-library selection.
+;   22-Oct-2026 GN: Resolve gsfit_freqpoltime at startup.
+;-
+
 pro gsfit_fit2guess,state
   widget_control,state.wfitpix ,get_value=fit_idx
   if ~state.fit->IsEmpty() and fit_idx gt 0 then begin
@@ -1789,6 +1855,7 @@ pro gsfit,nthreads
   cd,gsfitdir,curr=cdir
     resolve_routine,'oploterr'
     resolve_routine,'gsfit_log2map',/is_function,/no_recompile
+    resolve_routine,'gsfit_freqpoltime',/is_function,/no_recompile
     resolve_routine,'gsfit_log2list',/is_function,/no_recompile
     resolve_routine,'gsfitview',/no_recompile
     resolve_routine,'gsfitcp',/no_recompile

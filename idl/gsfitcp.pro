@@ -1,3 +1,45 @@
+;+
+; NAME:
+;   gsfitcp
+; PURPOSE:
+;   Command-line driver that fits EOVSA spectra on one or more IDL bridges and logs one record per pixel.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   gsfitcp [, cp_input] [, nbridges] [, /start, /status, out=out, /quiet, /abort, /flush, /exit]
+; INPUTS:
+;   CP_INPUT: path of a saved GSFIT task structure, or the task structure itself. A scalar number is taken as NBRIDGES.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   NBRIDGES: number of asynchronous bridges.
+;   /START: begin processing the pending queue.
+;   /STATUS: print the queue status and return.
+;   OUT: path of the run-time log. The default is gsfitcp.log.
+;   /QUIET: suppress progress messages. QUIET=0 turns them back on.
+;   /FLUSH: delete pending tasks.
+;   /ABORT: abort active tasks and flush the queue.
+;   /EXIT: abort, flush, close the log, and release the bridges.
+; OUTPUTS:
+;   None. Completed pixels are appended to the log given by OUT.
+; ROUTINES CALLED:
+;   gsfit_readfits, eovsa_maps2gsfit, MULTI_SAVE. Retrieve the cube later with gsfit_log2map.
+; COMMENTS:
+;   Helper routines in this file (gsfitcp_start, gsfitcp_status, gsfitcp_abort, and the queue routines) are called through the keywords above.
+; SIDE EFFECTS:
+;   Uses the common block CPBLOCK for the bridges, task list, maps, and log unit.
+; RESTRICTIONS:
+;   The log is a multi_save sequence, one record per pixel. gsfit_log2map is the reader shared with the widget.
+; MODIFICATION HISTORY:
+;   Written 5-May-2019 Gelu M. Nita (gnita@njit.edu)
+;   14-May-2019 GN: Minor updates.
+;   27-May-2019 GN: Restructured the package.
+;   10-Mar-2020 GN: Added polarization functionality.
+;   17-Feb-2022 GN: Replaced IDL_IDLBridge with the SSW IDL_Bridge object.
+;   2-Nov-2022 GN: Updated run-time error handling.
+;   2-Jan-2023 GN: Updated gsfitcp.
+;   21-Dec-2023 GN: Updated RMS scaling.
+;   28-Feb-2025 GN: Updated the EOVSA map-reading routine.
+;-
+
 
 function gsfitcp_get_bridges
   common cpblock, lun, bridges, tasklist, maps, cpinput, cp_start_time, cplog, cpquiet
