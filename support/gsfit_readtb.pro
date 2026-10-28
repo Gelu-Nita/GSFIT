@@ -32,12 +32,12 @@
 ;   2-Nov-2022 GN: Updated run-time error handling.
 ;   15-Nov-2023 GN: Fixed tag-name consistency.
 ;   22-Oct-2026 GN: Replace the inline axis logic with gsfit_freqpoltime.
+;   28-Oct-2026 GN: Normalize an in-memory map before the RMS and flux steps, the same way a restored file is normalized.
 ;-
 
 pro gsfit_readtb,datafile,maps
   if valid_map(datafile) then begin
-    dim=size(datafile,/dim)
-    maps=reform(datafile,dim)
+    maps=gsfit_freqpoltime(datafile)
     goto,compute_rms
   endif
   ;restores brightness temperature maps and convert them to flux maps

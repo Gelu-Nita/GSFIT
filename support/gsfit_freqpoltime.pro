@@ -45,6 +45,7 @@ function gsfit_freqpoltime, maps, nfreq=nfreq_in, npol=npol_in, ntime=ntime_in
     ntime = long(ntime_in)
   endif else if tag_exist(maps, 'dimensions') && rank lt 3 then begin
     names = strupcase(strtrim(maps[0].dimensions, 2))
+    ; < and > are minimum and maximum.
     nuse = n_elements(names) < rank
     slots = intarr(nuse > 1)
     known = nuse ge 1
