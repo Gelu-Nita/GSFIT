@@ -42,6 +42,7 @@
 ;   2-Mar-2024 GN: Display updates and an error-scaling correction.
 ;   27-Nov-2024 GN: Updated gsfitview.
 ;   22-Oct-2026 GN: Normalize fit, data, and error cubes to [Freq, Pol, Time] before reading the axis lengths, so a saved list and a live handoff use the same layout.
+;   28-Oct-2026 GN: Adopted the plot color and symbol defaults from a diverging copy: histogram halo, parameter-map contour and ROI, spectrum line weight, and time-profile symbol size.
 ;-
 
 forward_function gsfit_log2map, gsfit_log2list
@@ -744,8 +745,10 @@ pro gsfitview_display_statistics,state,save=save
         xrange=n_elements(pxrange) gt 0?anytim(time[pxrange]):minmax(anytim(time)),ymargin=[6,6]
       plot_map_colorbar,minmax(h),log=loghist,charsize=charsize,cb_title='Counts'
       if over2d then begin
-        outplot,time,lc,thick=1,psym=2
-        uterrplot,time,lc-errlc,lc+errlc,thick=1
+        colo=250
+        outplot,time,lc,thick=4,psym=2,color=0
+        outplot,time,lc,thick=1,psym=2,color=colo
+        uterrplot,time,lc-errlc,lc+errlc,thick=1,color=colo
       end
       outplot,time[[time_idx,time_idx]],logbins?10^!y.crange:!y.crange,linesty=2,color=250,thick=3
     endelse
@@ -902,7 +905,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
     if keyword_set(contour) then begin
       plot_map,parmap,title=parmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick,dmin=dmin,dmax=dmax,log_scale=log_scale
       plot_map,refmap,/over,levels=level,/per,thick=6,color=0,xshift=xshift,yshift=yshift
-       plot_map,refmap,/over,levels=level,/per,thick=3,color=255,xshift=xshift,yshift=yshift
+       plot_map,refmap,/over,levels=level,/per,thick=6,color=250,xshift=xshift,yshift=yshift
       frontmap=refmap
     endif else begin
       plot_map,refmap,title=refmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift,charsize=charsize,charthick=charthick
@@ -915,6 +918,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   
   oplot,xpix[[i,i]],!y.crange,linesty=2,color=250,thick=3
   oplot,!x.crange,ypix[[j,j]],linesty=2,color=250,thick=3
+  if ~state.wHist.xroi.IsEmpty() then plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=0,thick=6
   if ~state.wHist.xroi.IsEmpty() then plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=250,thick=3
   
   if keyword_set(showrefmap) then begin
@@ -947,10 +951,10 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
         pxrange=[1,20]
       end
       plot,freq,data_spectrum[i,j,*],xlog=xlog,ylog=ylog,xrange=pxrange,yrange=pyrange,psym=2,$
-        xtitle='Frequency (GHz)',ytitle='Flux density [sfu/pixel]',title='Spectral Fit',ymargin=[6,6],/xsty,/ysty,charsize=charsize,charthick=charthick
-      oploterr, freq, data_spectrum[i,j,*], err_spectrum[i,j,*]*2/2, psym=3;, hatlength=2, errcolor=255 
+        xtitle='Frequency (GHz)',ytitle='Flux density [sfu/pixel]',title='Spectral Fit',ymargin=[6,6],/xsty,/ysty,charsize=charsize,charthick=charthick,thick=2,symsize=1
+      oploterr, freq, data_spectrum[i,j,*], err_spectrum[i,j,*]*2/2, psym=3,thick=2;, hatlength=2, errcolor=255 
       oplot,freq,fit_spectrum[i,j,*],color=BlackOnWhite?50:150,thick=3
-      oplot,freq[[freq_idx,freq_idx]],10^!y.crange,linesty=2,color=250,thick=3
+      oplot,freq[[freq_idx,freq_idx]],10^!y.crange,linesty=2,color=250,thick=5
       if range eq 'Auto' then objSpectralPlotOptions->SetProperty,xrange=keyword_set(xlog)?10^!x.crange:!x.crange, yrange=keyword_set(ylog)?10^!y.crange:!y.crange
     endif else erase,0
     
@@ -990,8 +994,9 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
       ENDIF
     
       utplot,time,lc,ytitle=parmap.id,psym=3,title=parmap.id+' Evolution',/xsty,/ysty,$
-      ymargin=[6,6],ylog=ylog,xlog=xlog,xrange=pxrange,yrange=pyrange,charsize=charsize,charthick=charthick,nticks=3
-      outplot,time,lc,color=BlackOnWhite?50:150,thick=3,psym=2
+      ymargin=[6,6],ylog=ylog,xlog=xlog,xrange=pxrange,yrange=pyrange,charsize=charsize,charthick=charthick,nticks=3,$
+        symsize=2
+      outplot,time,lc,color=BlackOnWhite?50:150,thick=3,psym=2,symsize=0.5
       if errparm_index[0] gt 0 then begin
        uterrplot,time,lc-errlc,lc+errlc
       endif
