@@ -30,6 +30,7 @@
 ;   20-Apr-2020 GN: Fixed a fit-map format bug.
 ;   4-Sep-2025 GN: Accommodated more than one polarization.
 ;   22-Oct-2026 GN: Force FITMAPS, DATAMAPS, and ERRMAPS to [Freq, Pol, Time] and store that dimensions tag.
+;   28-Oct-2026 GN: Return the maps unchanged when a cube cannot be arranged as [Freq, Pol, Time].
 ;-
 
 function gsfit_log2map,fitxfile,full_size=full_size,header=header,_extra=_extra
@@ -145,8 +146,12 @@ function gsfit_log2map,fitxfile,full_size=full_size,header=header,_extra=_extra
   
   gsfit_energy_computation,maps,header,_extra=_extra
   maps=add_tag(maps,header,'header')
-  maps=rep_tag_value(maps,gsfit_freqpoltime(maps.fitmaps,nfreq=nfreq,npol=npol,ntime=ntime),'fitmaps')
-  maps=rep_tag_value(maps,gsfit_freqpoltime(maps.datamaps,nfreq=nfreq,npol=npol,ntime=ntime),'datamaps')
-  maps=rep_tag_value(maps,gsfit_freqpoltime(maps.errmaps,nfreq=nfreq,npol=npol,ntime=ntime),'errmaps')
+  fitmaps=gsfit_freqpoltime(maps.fitmaps,nfreq=nfreq,npol=npol,ntime=ntime,ok=fit_ok)
+  datamaps=gsfit_freqpoltime(maps.datamaps,nfreq=nfreq,npol=npol,ntime=ntime,ok=data_ok)
+  errmaps=gsfit_freqpoltime(maps.errmaps,nfreq=nfreq,npol=npol,ntime=ntime,ok=err_ok)
+  if ~fit_ok || ~data_ok || ~err_ok then return, maps
+  maps=rep_tag_value(maps,fitmaps,'fitmaps')
+  maps=rep_tag_value(maps,datamaps,'datamaps')
+  maps=rep_tag_value(maps,errmaps,'errmaps')
   return,maps
 end

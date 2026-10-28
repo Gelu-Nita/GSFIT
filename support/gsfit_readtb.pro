@@ -33,39 +33,41 @@
 ;   15-Nov-2023 GN: Fixed tag-name consistency.
 ;   22-Oct-2026 GN: Replace the inline axis logic with gsfit_freqpoltime.
 ;   28-Oct-2026 GN: Normalize an in-memory map before the RMS and flux steps, the same way a restored file is normalized.
+;   28-Oct-2026 GN: Apply the file-path datatype check to an in-memory cube, and return when the cube cannot be arranged as [Freq, Pol, Time].
 ;-
 
 pro gsfit_readtb,datafile,maps
-  if valid_map(datafile) then begin
-    maps=gsfit_freqpoltime(datafile)
-    goto,compute_rms
-  endif
-  ;restores brightness temperature maps and convert them to flux maps
-  osav=obj_new('idl_savefile',datafile)
-  names=osav->names()
-  valid=0
-  for i=0,n_elements(names)-1 do begin
-    osav->restore,names[i]
-    e=execute('result=size('+names[i]+',/tname)')
-    if (result eq 'STRUCT') then begin
-      e=execute('eomaps=temporary('+names[i]+')')
-    endif
-  endfor
-  obj_destroy,osav
-  if valid_map(eomaps) then begin
-    if tag_exist(eomaps,'datatype') then begin
-    if not ((eomaps[0].datatype eq 'Brightness Temperature') or (eomaps[0].datatype eq 'Flux')) then begin
+  from_memory=valid_map(datafile)
+  if from_memory then begin
+    maps=datafile
+  endif else begin
+    ;restores brightness temperature maps and convert them to flux maps
+    osav=obj_new('idl_savefile',datafile)
+    names=osav->names()
+    valid=0
+    for i=0,n_elements(names)-1 do begin
+      osav->restore,names[i]
+      e=execute('result=size('+names[i]+',/tname)')
+      if (result eq 'STRUCT') then begin
+        e=execute('eomaps=temporary('+names[i]+')')
+      endif
+    endfor
+    obj_destroy,osav
+    if ~valid_map(eomaps) then return
+    maps=temporary(eomaps)
+  endelse
+  if tag_exist(maps,'datatype') then begin
+    if not ((maps[0].datatype eq 'Brightness Temperature') or (maps[0].datatype eq 'Flux')) then begin
       message,'Error: The restored maps are not brightness temperature or flux maps,operation aborted!',/info
       return
     endif
-    endif else message,'WARNING: The restored maps are not registered as brightness temperature maps, proceed with caution!',/info
-    maps=temporary(eomaps)
-    if ~tag_exist(maps,'datatype') then begin
-      maps=REP_TAG_VALUE(maps,'Brightness Temperature','datatype')
-      maps=REP_TAG_VALUE(maps,'K','dataunits')
-    endif
-    maps=gsfit_freqpoltime(maps)
-    compute_rms:
+  endif else begin
+    message,'WARNING: The restored maps are not registered as brightness temperature maps, proceed with caution!',/info
+    maps=REP_TAG_VALUE(maps,'Brightness Temperature','datatype')
+    maps=REP_TAG_VALUE(maps,'K','dataunits')
+  endelse
+  maps=gsfit_freqpoltime(maps,ok=arranged)
+  if ~arranged then return
     ;temporary
     if max(maps.rms) eq 0 then begin
       desc = [ $
@@ -115,7 +117,6 @@ pro gsfit_readtb,datafile,maps
           maps[*,i,j].rms*=1/coeff
         endfor
       endfor  
-    endif  
-  endif  
-  if valid_map(datafile) then datafile=temporary(maps)
+    endif
+  if from_memory then datafile=temporary(maps)
 end  

@@ -10,9 +10,10 @@
 ; INPUTS:
 ;   MAPS: a valid map structure or a map-structure array.
 ; OPTIONAL (KEYWORD) INPUT PARAMETERS:
-;   NFREQ, NPOL, NTIME: axis lengths to use when their product equals the number of maps. gsfit_log2map passes the header lengths. When they are omitted, the dimensions tag is used. A tag longer than the array means trailing axes of length 1 were dropped and are inserted again. With no tag, a 1-D array is frequency and a 2-D array is frequency by time.
+;   NFREQ, NPOL, NTIME: axis lengths to use when their product equals the number of maps. gsfit_log2map passes the header lengths. When they are omitted, the dimensions tag is used. A tag longer than the array means trailing axes of length 1 were dropped and are inserted again. With no tag, or with a tag that is not Freq, Pol, and Time in that order, a 1-D array is frequency and a 2-D array is frequency by time.
+;   OK: 1 when the array was arranged as [Freq, Pol, Time], 0 when the input is returned unchanged.
 ; OUTPUTS:
-;   MAPS: the same maps reformed to [NFREQ, NPOL, NTIME], with DIMENSIONS=['Freq','Pol','Time'] stored on every element. The input is returned unchanged when it is not a valid map or the element count does not match.
+;   MAPS: the same maps reformed to [NFREQ, NPOL, NTIME], with DIMENSIONS=['Freq','Pol','Time'] stored on every element. The input is returned unchanged, and OK is 0, when it is not a valid map or the element count does not match.
 ; ROUTINES CALLED:
 ;   valid_map, add_tag, rem_tag
 ; COMMENTS:
@@ -23,9 +24,11 @@
 ;   Parameter maps, which are one plane per time, must not be passed to this routine. It is for FITMAPS, DATAMAPS, ERRMAPS, and input image cubes.
 ; MODIFICATION HISTORY:
 ;   Written 22-Oct-2026 Gelu M. Nita (gnita@njit.edu)
+;   28-Oct-2026 GN: An unreadable dimensions tag uses the same axis order as a missing tag. OK reports whether the array was arranged.
 ;-
 
-function gsfit_freqpoltime, maps, nfreq=nfreq_in, npol=npol_in, ntime=ntime_in
+function gsfit_freqpoltime, maps, nfreq=nfreq_in, npol=npol_in, ntime=ntime_in, ok=ok
+  ok = 0b
   if size(maps, /tname) ne 'STRUCT' then return, maps
   if ~valid_map(maps) then return, maps
 
@@ -39,10 +42,12 @@ function gsfit_freqpoltime, maps, nfreq=nfreq_in, npol=npol_in, ntime=ntime_in
   ntime = 1L
   use_explicit = n_elements(nfreq_in) eq 1 && n_elements(npol_in) eq 1 && n_elements(ntime_in) eq 1
   if use_explicit then use_explicit = long(nfreq_in) * long(npol_in) * long(ntime_in) eq nmaps
+  arranged = 0b
   if use_explicit then begin
     nfreq = long(nfreq_in)
     npol = long(npol_in)
     ntime = long(ntime_in)
+    arranged = 1b
   endif else if tag_exist(maps, 'dimensions') && rank lt 3 then begin
     names = strupcase(strtrim(maps[0].dimensions, 2))
     ; < and > are minimum and maximum.
@@ -64,18 +69,10 @@ function gsfit_freqpoltime, maps, nfreq=nfreq_in, npol=npol_in, ntime=ntime_in
           2: ntime = dim[i]
         endcase
       endfor
-    endif else begin
-      ; Unrecognized names keep the previous reader fallback:
-      ; one axis is time, two axes are polarization then time.
-      case rank of
-        1: ntime = dim[0]
-        2: begin
-          npol = dim[0]
-          ntime = dim[1]
-        end
-      endcase
-    endelse
-  endif else begin
+      arranged = 1b
+    endif else message, 'Dimensions tag is not Freq, Pol, Time in that order. Using the default axis order.', /info
+  endif
+  if ~arranged then begin
     case rank of
       0:
       1: nfreq = dim[0]
@@ -89,7 +86,7 @@ function gsfit_freqpoltime, maps, nfreq=nfreq_in, npol=npol_in, ntime=ntime_in
         ntime = dim[2]
       end
     endcase
-  endelse
+  endif
 
   if (nfreq * npol * ntime) ne nmaps then begin
     message, 'Map array cannot be arranged as [Freq, Pol, Time], operation aborted!', /info
@@ -105,7 +102,10 @@ function gsfit_freqpoltime, maps, nfreq=nfreq_in, npol=npol_in, ntime=ntime_in
     current = strupcase(strtrim(out[0].dimensions, 2))
     if n_elements(current) eq 3 then begin
       if array_equal(current, strupcase(canon)) then begin
-        if size(out, /n_dimensions) eq 3 then return, out
+        if size(out, /n_dimensions) eq 3 then begin
+          ok = 1b
+          return, out
+        endif
       endif
     endif
     out = rem_tag(out, 'dimensions')
@@ -113,5 +113,6 @@ function gsfit_freqpoltime, maps, nfreq=nfreq_in, npol=npol_in, ntime=ntime_in
   ; add_tag rebuilds the array and drops trailing axes of length 1.
   out = add_tag(out, canon, 'dimensions', /no_pair)
   if size(out, /n_dimensions) ne 3 then out = reform(out, nfreq, npol, ntime)
+  ok = 1b
   return, out
 end

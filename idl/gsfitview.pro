@@ -43,6 +43,7 @@
 ;   27-Nov-2024 GN: Updated gsfitview.
 ;   22-Oct-2026 GN: Normalize fit, data, and error cubes to [Freq, Pol, Time] before reading the axis lengths, so a saved list and a live handoff use the same layout.
 ;   28-Oct-2026 GN: Adopted the plot color and symbol defaults from a diverging copy: histogram halo, parameter-map contour and ROI, spectrum line weight, and time-profile symbol size.
+;   28-Oct-2026 GN: Stop opening a cube when frequency, polarization, and time cannot be arranged.
 ;-
 
 forward_function gsfit_log2map, gsfit_log2list
@@ -347,10 +348,12 @@ pro gsfitview_event,event
                         ; subscripts still address those axes.
                         have_fit=tag_exist(maps,'FITMAPS')
                         have_err=tag_exist(maps,'ERRMAPS')
-                        if have_fit then fitmaps=gsfit_freqpoltime(maps.fitmaps)
-                        datamaps=gsfit_freqpoltime(maps.datamaps)
-                        if have_err then errmaps=gsfit_freqpoltime(maps.errmaps)
-                        if size(datamaps,/n_dimensions) ne 3 then begin
+                        fit_ok=1b
+                        err_ok=1b
+                        if have_fit then fitmaps=gsfit_freqpoltime(maps.fitmaps,ok=fit_ok)
+                        datamaps=gsfit_freqpoltime(maps.datamaps,ok=data_ok)
+                        if have_err then errmaps=gsfit_freqpoltime(maps.errmaps,ok=err_ok)
+                        if ~fit_ok || ~data_ok || ~err_ok || size(datamaps,/n_dimensions) ne 3 then begin
                           answ=dialog_message('Unexpected data format, operation aborted!')
                           return
                         endif
