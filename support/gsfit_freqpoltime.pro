@@ -10,7 +10,7 @@
 ; INPUTS:
 ;   MAPS: a valid map structure or a map-structure array.
 ; OPTIONAL (KEYWORD) INPUT PARAMETERS:
-;   NFREQ, NPOL, NTIME: axis lengths to use when their product equals the number of maps. gsfit_log2map passes the header lengths. When they are omitted, the dimensions tag is used. A tag longer than the array means trailing axes of length 1 were dropped and are inserted again. With no tag, or with a tag that is not Freq, Pol, and Time in that order, a 1-D array is frequency and a 2-D array is frequency by time.
+;   NFREQ, NPOL, NTIME: axis lengths to use when their product equals the number of maps. gsfit_log2map passes the header lengths. When they are omitted, the dimensions tag is used. A tag longer than the array means trailing axes of length 1 were dropped and are inserted again. With no tag, or with a tag that is not Freq, Pol, and Time in that order, a 1-D array is frequency and a 2-D array is frequency by time. A rank-3 array keeps that index order. A tag that names the axes differently produces a warning and does not permute the array.
 ;   OK: 1 when the array was arranged as [Freq, Pol, Time], 0 when the input is returned unchanged.
 ; OUTPUTS:
 ;   MAPS: the same maps reformed to [NFREQ, NPOL, NTIME], with DIMENSIONS=['Freq','Pol','Time'] stored on every element. The input is returned unchanged, and OK is 0, when it is not a valid map or the element count does not match.
@@ -25,6 +25,7 @@
 ; MODIFICATION HISTORY:
 ;   Written 22-Oct-2026 Gelu M. Nita (gnita@njit.edu)
 ;   28-Oct-2026 GN: An unreadable dimensions tag uses the same axis order as a missing tag. OK reports whether the array was arranged.
+;   28-Oct-2026 GN: Warn when a rank-3 dimensions tag is not Freq, Pol, Time, and keep the array in index order.
 ;-
 
 function gsfit_freqpoltime, maps, nfreq=nfreq_in, npol=npol_in, ntime=ntime_in, ok=ok
@@ -48,29 +49,40 @@ function gsfit_freqpoltime, maps, nfreq=nfreq_in, npol=npol_in, ntime=ntime_in, 
     npol = long(npol_in)
     ntime = long(ntime_in)
     arranged = 1b
-  endif else if tag_exist(maps, 'dimensions') && rank lt 3 then begin
+  endif else if tag_exist(maps, 'dimensions') then begin
     names = strupcase(strtrim(maps[0].dimensions, 2))
-    ; < and > are minimum and maximum.
-    nuse = n_elements(names) < rank
-    slots = intarr(nuse > 1)
-    known = nuse ge 1
-    for i = 0, nuse-1 do begin
-      hit = where(names[i] eq ['FREQ', 'POL', 'TIME'], nfound)
-      if nfound ne 1 then known = 0b else slots[i] = hit[0]
-    endfor
-    if known && nuse gt 1 then begin
-      for i = 1, nuse-1 do if slots[i] le slots[i-1] then known = 0b
-    endif
-    if known then begin
+    if rank lt 3 then begin
+      ; < and > are minimum and maximum.
+      nuse = n_elements(names) < rank
+      slots = intarr(nuse > 1)
+      known = nuse ge 1
       for i = 0, nuse-1 do begin
-        case slots[i] of
-          0: nfreq = dim[i]
-          1: npol = dim[i]
-          2: ntime = dim[i]
-        endcase
+        hit = where(names[i] eq ['FREQ', 'POL', 'TIME'], nfound)
+        if nfound ne 1 then known = 0b else slots[i] = hit[0]
       endfor
-      arranged = 1b
-    endif else message, 'Dimensions tag is not Freq, Pol, Time in that order. Using the default axis order.', /info
+      if known && nuse gt 1 then begin
+        for i = 1, nuse-1 do if slots[i] le slots[i-1] then known = 0b
+      endif
+      if known then begin
+        for i = 0, nuse-1 do begin
+          case slots[i] of
+            0: nfreq = dim[i]
+            1: npol = dim[i]
+            2: ntime = dim[i]
+          endcase
+        endfor
+        arranged = 1b
+      endif else message, 'Dimensions tag is not Freq, Pol, Time in that order. Using the default axis order.', /info
+    endif else begin
+      canonical = n_elements(names) ge 3
+      if canonical then canonical = array_equal(names[0:2], ['FREQ', 'POL', 'TIME'])
+      if canonical then begin
+        nfreq = dim[0]
+        npol = dim[1]
+        ntime = dim[2]
+        arranged = 1b
+      endif else message, 'Dimensions tag is not Freq, Pol, Time in that order. Using the default axis order.', /info
+    endelse
   endif
   if ~arranged then begin
     case rank of

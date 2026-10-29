@@ -6,13 +6,14 @@
 ; CATEGORY:
 ;   GSFIT
 ; CALLING SEQUENCE:
-;   gsfit_readtb, datafile, maps
+;   gsfit_readtb, datafile, maps [, ok=ok]
 ; INPUTS:
 ;   DATAFILE: file name of an IDL save file, or a map structure that is already in memory.
 ; OPTIONAL (KEYWORD) INPUT PARAMETERS:
 ;   MAPS: named variable that receives the normalized cube. When DATAFILE is itself a map structure, the normalized cube is returned in DATAFILE.
+;   OK: 1 when a cube was arranged as [Freq, Pol, Time]. 0 when the routine returns without one. On failure MAPS is undefined.
 ; OUTPUTS:
-;   MAPS: flux maps shaped [frequency, polarization, time]. Brightness-temperature input is converted to sfu. A zero RMS cube can be filled from a frequency-dependent noise ratio entered in a form.
+;   MAPS: flux maps shaped [frequency, polarization, time]. Brightness-temperature input is converted to sfu. A zero RMS cube can be filled from a frequency-dependent noise ratio entered in a form. Undefined when OK is 0, and also when an in-memory cube was returned in DATAFILE.
 ; ROUTINES CALLED:
 ;   gsfit_freqpoltime, valid_map, CW_FORM
 ; COMMENTS:
@@ -34,9 +35,11 @@
 ;   22-Oct-2026 GN: Replace the inline axis logic with gsfit_freqpoltime.
 ;   28-Oct-2026 GN: Normalize an in-memory map before the RMS and flux steps, the same way a restored file is normalized.
 ;   28-Oct-2026 GN: Apply the file-path datatype check to an in-memory cube, and return when the cube cannot be arranged as [Freq, Pol, Time].
+;   28-Oct-2026 GN: OK reports that failure, and MAPS is left undefined so the un-normalized array is not used.
 ;-
 
-pro gsfit_readtb,datafile,maps
+pro gsfit_readtb,datafile,maps,ok=ok
+  ok=0b
   from_memory=valid_map(datafile)
   if from_memory then begin
     maps=datafile
@@ -59,6 +62,7 @@ pro gsfit_readtb,datafile,maps
   if tag_exist(maps,'datatype') then begin
     if not ((maps[0].datatype eq 'Brightness Temperature') or (maps[0].datatype eq 'Flux')) then begin
       message,'Error: The restored maps are not brightness temperature or flux maps,operation aborted!',/info
+      scratch=temporary(maps)
       return
     endif
   endif else begin
@@ -67,7 +71,10 @@ pro gsfit_readtb,datafile,maps
     maps=REP_TAG_VALUE(maps,'K','dataunits')
   endelse
   maps=gsfit_freqpoltime(maps,ok=arranged)
-  if ~arranged then return
+  if ~arranged then begin
+    scratch=temporary(maps)
+    return
+  endif
     ;temporary
     if max(maps.rms) eq 0 then begin
       desc = [ $
@@ -118,5 +125,6 @@ pro gsfit_readtb,datafile,maps
         endfor
       endfor  
     endif
+  ok=1b
   if from_memory then datafile=temporary(maps)
 end  

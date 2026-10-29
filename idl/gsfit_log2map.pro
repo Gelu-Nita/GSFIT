@@ -31,6 +31,7 @@
 ;   4-Sep-2025 GN: Accommodated more than one polarization.
 ;   22-Oct-2026 GN: Force FITMAPS, DATAMAPS, and ERRMAPS to [Freq, Pol, Time] and store that dimensions tag.
 ;   28-Oct-2026 GN: Return the maps unchanged when a cube cannot be arranged as [Freq, Pol, Time].
+;   28-Oct-2026 GN: Print that failure before returning.
 ;-
 
 function gsfit_log2map,fitxfile,full_size=full_size,header=header,_extra=_extra
@@ -149,7 +150,10 @@ function gsfit_log2map,fitxfile,full_size=full_size,header=header,_extra=_extra
   fitmaps=gsfit_freqpoltime(maps.fitmaps,nfreq=nfreq,npol=npol,ntime=ntime,ok=fit_ok)
   datamaps=gsfit_freqpoltime(maps.datamaps,nfreq=nfreq,npol=npol,ntime=ntime,ok=data_ok)
   errmaps=gsfit_freqpoltime(maps.errmaps,nfreq=nfreq,npol=npol,ntime=ntime,ok=err_ok)
-  if ~fit_ok || ~data_ok || ~err_ok then return, maps
+  if ~fit_ok || ~data_ok || ~err_ok then begin
+    message, 'Fit list was not converted because a cube could not be arranged as [Freq, Pol, Time].', /info
+    return, maps
+  endif
   maps=rep_tag_value(maps,fitmaps,'fitmaps')
   maps=rep_tag_value(maps,datamaps,'datamaps')
   maps=rep_tag_value(maps,errmaps,'errmaps')
