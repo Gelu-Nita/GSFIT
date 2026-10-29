@@ -1,3 +1,34 @@
+;+
+; NAME:
+;   gsfit_libpath
+; PURPOSE:
+;   Return the path of a GSFIT fitting library, copying or building it for this operating system when needed.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   lib_path = gsfit_libpath(root [, /update, /unix, /full])
+; INPUTS:
+;   ROOT: library directory name under GSFITPATH, or a full directory path when FULL is set.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   UPDATE: rebuild a Unix shared library even when a binary is already cached.
+;   UNIX: treat the host as Unix and build from the makefile.
+;   FULL: ROOT is already a full directory path rather than a name to search under GSFITPATH.
+; OUTPUTS:
+;   LIB_PATH: path of the .dll or .so that can be passed to gsfit_libinfo. Returns !NULL when no library can be found or built.
+; ROUTINES CALLED:
+;   None.
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   On Unix the sources are copied to a build directory, make is run, and the shared library is cached under gsfit_binaries. A prebuilt .so is copied when the build fails.
+; RESTRICTIONS:
+;   ROOT must exist. On Windows a .dll is selected from the distribution; on Unix a makefile or a prebuilt .so is required.
+; MODIFICATION HISTORY:
+;   Written 13-Nov-2025 Gelu M. Nita (gnita@njit.edu)
+;   7-Dec-2025 GN: Refactored the repository structure.
+;   19-Dec-2025 GN: Updated fast-code and fitting-library selection.
+;-
+
 function gsfit_libpath,root,update=update,unix=unix,full=full
  ;Returns the precompiled WinOS name*.dll 
   ;returns the path to name*.so library on Linux if found in the var/tmp/gsfit_binaries, 

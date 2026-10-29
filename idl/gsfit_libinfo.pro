@@ -1,3 +1,33 @@
+;+
+; NAME:
+;   gsfit_libinfo
+; PURPOSE:
+;   Call a GSFIT fitting library and return the description of its input and output parameters.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   info = gsfit_libinfo([libpath] [, /getlib])
+; INPUTS:
+;   LIBPATH: full path of the shared library. If omitted, a previously saved libinfo.inp is restored when its library still exists.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   GETLIB: ask gsfit_select_lib for a library instead of using LIBPATH.
+; OUTPUTS:
+;   INFO: structure with the library entry points, integer inputs, real inputs, fit-parameter inputs, fit outputs, the library path, and an RMS placeholder. Returns !NULL when the library or its description files cannot be read.
+; ROUTINES CALLED:
+;   gsfit_select_lib, CALL_EXTERNAL
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   The library writes Long_input.txt, Real_input.txt, Parms_input.txt, and Parms_out.txt in the current directory. Those files are deleted after they are read. The resulting description is saved as libinfo.inp.
+; RESTRICTIONS:
+;   The shared library must export GET_TABLES and GET_MW_FIT on Windows, or get_tables_ and get_mw_fit_ on Unix. The opposite symbol case is tried once.
+; MODIFICATION HISTORY:
+;   Written 13-Nov-2025 Gelu M. Nita (gnita@njit.edu)
+;   7-Dec-2025 GN: Refactored the repository structure.
+;   15-Dec-2025 GN: Updated GS_FIT_1D and the fast-code selection routines.
+;   19-Dec-2025 GN: Updated fast-code and fitting-library selection.
+;-
+
 function gsfit_libinfo,libpath,getlib=getlib
   entry_point:
   if keyword_set(getlib) then libpath=gsfit_select_lib()

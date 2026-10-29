@@ -36,7 +36,15 @@
 ; MODIFICATION HISTORY:
 ;     Written 13-Nov-2020 Gelu M. Nita (gnita@njit.edu)
 ;     14-Nov-2020 GN: Added functionality to compute data RMS for either I-V, RCP-LCP, Tb or SFU maps
-;     15-Nov-2020 GN: Added kyword to skip RMS computation
+;     15-Nov-2020 GN: Added keyword to skip RMS computation
+;     12-Feb-2021 GN: Renamed from eovsa_fits2cube. Fixed selection of FITS files that share a timestamp.
+;     18-Feb-2021 GN: Stored frequencies at single precision.
+;     28-Aug-2021 GN: Updated the data-reading routines.
+;     10-Jun-2022 GN: Minor bug fixes.
+;     23-Aug-2022 GN: Several bug fixes.
+;     15-Nov-2023 GN: Fixed tag-name consistency.
+;     11-Jan-2025 GN: Fixed processing of a single time frame and a single polarization.
+;-
 function eovsa_fits2map,files,no_iv2rl=no_iv2rl,flux_threshold=flux_threshold,rms_mask=rms_mask,sfu=sfu,no_rms=no_rms
  default,flux_threshold,1
  nfiles=n_elements(files)

@@ -1,27 +1,43 @@
 ;+
 ; NAME:
-;    eovsa_maps2gsfit
+;   eovsa_maps2gsfit
 ; PURPOSE:
-;    this function can be used to reformat an EOVSA IDL map structure to o GSFIT compatible format
+;   Reformat an EOVSA map cube into the [frequency, polarization, time] layout used by GSFIT, and optionally convert brightness temperature to flux.
 ; CATEGORY:
-;    EVSA,GSFIT
+;   GSFIT
 ; CALLING SEQUENCE:
-;      maps=eovsa_fits2map(files,flux_threshold=flux_threshold,rms_mask=rms_mask,sfu=sfu,no_rms=no_rms)
-;
+;   maps = eovsa_maps2gsfit(maps_in [, flux_threshold=flux_threshold, rms_mask=rms_mask, /sfu, /no_rms])
 ; INPUTS:
-; a map structure or a filename to restore a map structure from
+;   MAPS_IN: a map structure, or the name of an IDL save file that contains one.
 ; OPTIONAL (KEYWORD) INPUT PARAMETERS:
-;
-;
-; /SFU: to convert the original Tb maps to Solar Flux maps
-;
-; FLUX_THRESHOLD: set it to a value representing an user defined minimum integrated flux
-;                 over all bands for a given pixel intensity not to be considered noise.
-;                 The default value is 1 sfu.
-;
-; RMS_MASK: provide an rms_mask as a nx*ny bit mask to indicate the pixels that should be included in the RMS computation.
-;          if rms_mask is provided, the flux_threshold, if present, is ignored
-;
+;   FLUX_THRESHOLD: minimum integrated flux, in sfu, below which a pixel is treated as noise. The default is 1 sfu. Ignored when RMS_MASK is set.
+;   RMS_MASK: nx by ny mask of pixels included in the RMS. When it is present, FLUX_THRESHOLD is ignored.
+;   /SFU: convert brightness-temperature maps to solar flux units.
+;   /NO_RMS: skip the RMS calculation.
+; OUTPUTS:
+;   MAPS: flux or brightness-temperature cube shaped [frequency, polarization, time], or !NULL when the input is not a valid map of one of those types.
+; ROUTINES CALLED:
+;   valid_map
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   Reorders the input by matching each map's frequency, Stokes parameter, and time. A 1-D or 2-D array is first given a unit polarization axis.
+; RESTRICTIONS:
+;   Frequencies are rounded to 0.01 GHz before they are matched. Maps that are not brightness temperature or flux are rejected.
+; MODIFICATION HISTORY:
+;   Written 28-Aug-2021 Gelu M. Nita (gnita@njit.edu)
+;   16-Sep-2021 GN: Added functionality and fixed minor bugs.
+;   11-Oct-2021 GN: Accepted EOVSA maps that use an older format.
+;   17-Feb-2022 GN: Replaced IDL_IDLBridge with the SSW IDL_Bridge object.
+;   10-Jun-2022 GN: Minor bug fixes.
+;   2-Nov-2022 GN: Updated run-time error handling.
+;   7-Jul-2023 GN: Temporary fix of a small bug.
+;   8-Nov-2023 GN: Minor bug fix.
+;   15-Nov-2023 GN: Fixed tag-name consistency.
+;   30-Jan-2024 GN: Updated comments.
+;   1-Sep-2025 GN: Accommodated spatially resolved data errors.
+;-
+
 function eovsa_maps2gsfit,maps_in,flux_threshold=flux_threshold,rms_mask=rms_mask,sfu=sfu,no_rms=no_rms
   
   if valid_map(maps_in) then begin

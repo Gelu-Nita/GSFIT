@@ -1,3 +1,32 @@
+;+
+; NAME:
+;   gsfit_spectralpeak_computation
+; PURPOSE:
+;   Add peak-flux and peak-frequency maps by interpolating the fitted spectra.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   gsfit_spectralpeak_computation, maps
+; INPUTS:
+;   MAPS: fit-map structure with HEADER.FREQ and the fitted flux in FITMAPS. When PEAKFREQ already exists, the routine returns without changing MAPS.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   None.
+; OUTPUTS:
+;   MAPS is updated in place with PEAKFLUX and ERRPEAKFLUX, in sfu, and PEAKFREQ and ERRPEAKFREQ, in GHz.
+; ROUTINES CALLED:
+;   None.
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   None.
+; RESTRICTIONS:
+;   MAPS.HEADER must exist and must contain the frequency list. The frequency step stored as the peak-frequency error is the maximum separation of the header frequencies.
+; MODIFICATION HISTORY:
+;   Written 27-May-2019 Gelu M. Nita (gnita@njit.edu)
+;   8-Oct-2019 GN: Incremental upgrade.
+;   2-Nov-2022 GN: Updated run-time error handling.
+;-
+
 pro gsfit_spectralpeak_computation,maps
 if ~tag_exist(maps,'header') then begin
   message,'Header structure expected to contain the frequency list is missing from the map structure!',/info

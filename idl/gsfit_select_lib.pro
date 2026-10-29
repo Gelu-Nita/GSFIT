@@ -1,3 +1,33 @@
+;+
+; NAME:
+;   gsfit_select_lib
+; PURPOSE:
+;   Ask the user which GSFIT external fitting library to use and return its path.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   lib = gsfit_select_lib([/update] [, select=select])
+; INPUTS:
+;   None. The choices are the first-level directories of the external folder under GSFITPATH.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   UPDATE: initial state of the Unix update checkbox. The dialog can override it.
+;   SELECT: zero-based index of the library to preselect.
+; OUTPUTS:
+;   LIB: path returned by gsfit_libpath, or !NULL when the user cancels or the selection is not valid on this operating system.
+; ROUTINES CALLED:
+;   gsfit_libpath, CW_FORM, dialog_pickfile
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   Opens a modal selection form. A local-repository button lets the user pick a directory instead of one of the listed libraries.
+; RESTRICTIONS:
+;   The environment variable GSFITPATH must be defined.
+; MODIFICATION HISTORY:
+;   Written 7-Dec-2025 Gelu M. Nita (gnita@njit.edu)
+;   15-Dec-2025 GN: Updated GS_FIT_1D and the fast-code selection routines.
+;   19-Dec-2025 GN: Updated fast-code and fitting-library selection.
+;-
+
 FUNCTION gsfit_select_lib, UPDATE=update, SELECT=select
   COMPILE_OPT IDL2
   ;Check the OS

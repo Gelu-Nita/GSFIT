@@ -1,3 +1,33 @@
+;+
+; NAME:
+;   gsfit_energy_computation
+; PURPOSE:
+;   Add magnetic and nonthermal electron energy maps to a GSFIT fit-map structure.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   gsfit_energy_computation, maps, header [, emin=emin]
+; INPUTS:
+;   MAPS: fit-map structure containing the B, ERRB, DELTA, ERRDELTA, N_NTH, and ERRN_NTH parameter maps.
+;   HEADER: fit header. HEADER.INFO.RPARMS supplies the source sizes and the default low-energy cutoff.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   EMIN: low-energy cutoff in eV. The default is the fifth real library parameter, converted from keV.
+; OUTPUTS:
+;   MAPS is updated in place with WB, ERRWB, WNTH, and ERRWNTH, in erg.
+; ROUTINES CALLED:
+;   None.
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   A spectral index of 2 makes the nonthermal-energy expression divide by zero. The message is reported and the other maps are still written.
+; RESTRICTIONS:
+;   HEADER.INFO.RPARMS.VALUE must contain the source depth, source length, and low-energy cutoff used by the fit.
+; MODIFICATION HISTORY:
+;   Written 5-May-2019 Gelu M. Nita (gnita@njit.edu)
+;   22-May-2019 GN: Cosmetic changes and new functionality.
+;   27-May-2019 GN: Restructured the package.
+;-
+
 pro gsfit_energy_computation,maps,header,emin=emin
 ds=(header.info.rparms.value)[3]
 dl=(header.info.rparms.value)[4]

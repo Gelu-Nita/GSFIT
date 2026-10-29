@@ -1,3 +1,30 @@
+;+
+; NAME:
+;   gsfit_log2list
+; PURPOSE:
+;   Restore a GSFIT multi_save fit list or a GSFITCP sequential log into one fit-record array.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   fit = gsfit_log2list([file] [, header=header])
+; INPUTS:
+;   FILE: optional name of a .sav or .log file. A file dialog is opened when FILE is omitted or does not exist.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   HEADER: named variable that receives the header saved with the list.
+; OUTPUTS:
+;   FIT: structure array sorted by time index, or !NULL when the file cannot be read.
+; ROUTINES CALLED:
+;   MULTI_RESTORE
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   Opens a file dialog when no readable file is supplied.
+; RESTRICTIONS:
+;   A list written before 1-Mar-2019 is accepted only when the restored file still contains FIT, TIME, FREQ, and REFMAP. A whole-array GSFIT template is returned as that array; extra multi_save records are appended when the file pointer is not at the end.
+; MODIFICATION HISTORY:
+;   Written 5-May-2019 Gelu M. Nita (gnita@njit.edu)
+;-
+
 forward_function gsfit_libinfo
 function gsfit_log2list,file,header=header
     if ~file_exist(file) then begin

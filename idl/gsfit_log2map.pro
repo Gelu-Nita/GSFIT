@@ -1,3 +1,39 @@
+;+
+; NAME:
+;   gsfit_log2map
+; PURPOSE:
+;   Convert a GSFIT or GSFITCP fit list into the map-cube structure read by gsfitview.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   maps = gsfit_log2map(fitxfile [, /full_size, header=header, _extra=extra])
+; INPUTS:
+;   FITXFILE: a fit-record structure array, or the name of a multi_save fit list or gsfitcp log. If it is not a structure, gsfit_log2list restores it.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   FULL_SIZE: keep the reference-map field of view. By default the cube is cropped to the fitted pixels.
+;   HEADER: fit header. It is an input when FITXFILE is already a structure, and an output when the list is read from disk.
+;   _EXTRA: passed to gsfit_energy_computation, including EMIN.
+; OUTPUTS:
+;   MAPS: anonymous structure with FITMAPS, DATAMAPS, and ERRMAPS shaped [frequency, polarization, time], plus one parameter map and one error map per fitted time, the energy maps, and HEADER.
+; ROUTINES CALLED:
+;   gsfit_log2list, gsfit_freqpoltime, gsfit_energy_computation, sub_map
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   Adds peak-flux tags to the fit records and appends those names to HEADER. Prints a floating divide-by-zero from the energy calculation when a spectral index is 2.
+; RESTRICTIONS:
+;   Every spectrum in the list must have the length of HEADER.FREQ. Per-pixel fmin and fmax select a window inside that axis; they do not change the cube size. Channels outside a pixel's window are zero.
+; MODIFICATION HISTORY:
+;   Written 5-May-2019 Gelu M. Nita (gnita@njit.edu)
+;   27-May-2019 GN: Restructured the package.
+;   10-Mar-2020 GN: Added polarization functionality.
+;   20-Apr-2020 GN: Fixed a fit-map format bug.
+;   4-Sep-2025 GN: Accommodated more than one polarization.
+;   22-Oct-2026 GN: Force FITMAPS, DATAMAPS, and ERRMAPS to [Freq, Pol, Time] and store that dimensions tag.
+;   28-Oct-2026 GN: Return the maps unchanged when a cube cannot be arranged as [Freq, Pol, Time].
+;   28-Oct-2026 GN: Print that failure before returning.
+;-
+
 function gsfit_log2map,fitxfile,full_size=full_size,header=header,_extra=_extra
   if size(fitxfile,/tname) eq 'STRUCT' then fit=fitxfile else fit=gsfit_log2list(fitxfile,header=header)
   
@@ -111,8 +147,15 @@ function gsfit_log2map,fitxfile,full_size=full_size,header=header,_extra=_extra
   
   gsfit_energy_computation,maps,header,_extra=_extra
   maps=add_tag(maps,header,'header')
-  maps.fitmaps=reform(maps.fitmaps,nfreq,Npol,ntime)
-  maps.datamaps=reform(maps.datamaps,nfreq,Npol,ntime)
-  maps.errmaps=reform(maps.errmaps,nfreq,Npol,ntime)
+  fitmaps=gsfit_freqpoltime(maps.fitmaps,nfreq=nfreq,npol=npol,ntime=ntime,ok=fit_ok)
+  datamaps=gsfit_freqpoltime(maps.datamaps,nfreq=nfreq,npol=npol,ntime=ntime,ok=data_ok)
+  errmaps=gsfit_freqpoltime(maps.errmaps,nfreq=nfreq,npol=npol,ntime=ntime,ok=err_ok)
+  if ~fit_ok || ~data_ok || ~err_ok then begin
+    message, 'Fit list was not converted because a cube could not be arranged as [Freq, Pol, Time].', /info
+    return, maps
+  endif
+  maps=rep_tag_value(maps,fitmaps,'fitmaps')
+  maps=rep_tag_value(maps,datamaps,'datamaps')
+  maps=rep_tag_value(maps,errmaps,'errmaps')
   return,maps
 end

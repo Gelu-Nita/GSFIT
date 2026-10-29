@@ -1,3 +1,51 @@
+;+
+; NAME:
+;   gsfitview
+; PURPOSE:
+;   Display a GSFIT fit-map cube: image planes, parameter maps, spectra, and time profiles.
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   gsfitview [, maps]
+; INPUTS:
+;   MAPS: optional fit-map structure produced by gsfit_log2map, or a .sav file name. If omitted, the widget starts empty and a cube can be opened from the menu.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   None.
+; OUTPUTS:
+;   None. The routine creates the GSFITVIEW widget.
+; ROUTINES CALLED:
+;   gsfit_log2map, gsfit_log2list, gsfit_freqpoltime, gsfit, gsfitcp, gsfit_energy_computation
+; COMMENTS:
+;   Import Fit List restores a multi_save list through gsfit_log2map. Upload Fit Map Structure opens a saved map cube directly. The file also contains the drawing and export routines.
+; SIDE EFFECTS:
+;   Changes the working directory while resolving dependencies, then opens a blocking widget.
+; RESTRICTIONS:
+;   Image cubes are read as [frequency, polarization, time]. A saved list and a live handoff both go through that normalization before the axes are counted.
+; MODIFICATION HISTORY:
+;   Written 5-May-2019 Gelu M. Nita (gnita@njit.edu)
+;   9-May-2019 GN: Updated gsfitview and disabled angular-code input.
+;   14-May-2019 GN: Minor updates.
+;   16-May-2019 GN: Updated gsfitview.
+;   22-May-2019 GN: Cosmetic changes and new functionality.
+;   27-May-2019 GN: Restructured the package.
+;   21-Jun-2019 GN: Updated the Unix distribution.
+;   7-Nov-2019 GN: Incremental upgrade.
+;   10-Mar-2020 GN: Added polarization functionality.
+;   10-Apr-2021 GN: Fixed inconsistent variable names.
+;   28-Aug-2021 GN: Updated the data-reading routines.
+;   4-Jan-2023 GN: Updated gsfitview.
+;   6-Jan-2023 GN: Fixed free-hand ROI selection.
+;   9-Sep-2023 GN: Updated plot options.
+;   15-Nov-2023 GN: Fixed tag-name consistency.
+;   23-Jan-2024 GN: Fixed a reference-map contour ROI mismatch.
+;   9-Feb-2024 GN: Minor spelling correction.
+;   2-Mar-2024 GN: Display updates and an error-scaling correction.
+;   27-Nov-2024 GN: Updated gsfitview.
+;   22-Oct-2026 GN: Normalize fit, data, and error cubes to [Freq, Pol, Time] before reading the axis lengths, so a saved list and a live handoff use the same layout.
+;   28-Oct-2026 GN: Adopted the plot color and symbol defaults from a diverging copy: histogram halo, parameter-map contour and ROI, spectrum line weight, and time-profile symbol size.
+;   28-Oct-2026 GN: Stop opening a cube when frequency, polarization, and time cannot be arranged.
+;-
+
 forward_function gsfit_log2map, gsfit_log2list
 
 pro gsfitview_event,event
@@ -294,67 +342,34 @@ pro gsfitview_event,event
                   opencube:
                   if size(maps,/tname) eq 'STRUCT' then begin
                     if tag_exist(maps,'DATAMAPS') then begin
-                        sz=size(maps.datamaps.data)
-                        if tag_exist(maps.datamaps,'dimensions') then begin
-                          case sz[0] of
-                            3:begin
-                               nx=sz[1]
-                               ny=sz[2]
-                               nfreqs=sz[3]
-                               npols=1
-                               ntimes=1
-                              end
-                            4: begin
-                                nx=sz[1]
-                                ny=sz[2]
-                                nfreqs=sz[3]
-                                npols=sz[4]
-                                ntimes=1
-                               end 
-                            5: begin
-                                 nx=sz[1]
-                                 ny=sz[2]
-                                 nfreqs=sz[3]
-                                 npols=sz[4]
-                                 ntimes=sz[5]
-                               end  
-                            else: begin
-                                   answ=dialog_message('Unexpected data format, operation aborted!')
-                                   return
-                                  end    
-                           endcase
-                         endif else begin
-                           case sz[0] of
-                             3:begin
-                               nx=sz[1]
-                               ny=sz[2]
-                               nfreqs=sz[3]
-                               npols=1
-                               ntimes=1
-                             end
-                             4: begin
-                               nx=sz[1]
-                               ny=sz[2]
-                               nfreqs=sz[3]
-                               npols=1
-                               ntimes=sz[4]
-                             end
-                             5: begin
-                               nx=sz[1]
-                               ny=sz[2]
-                               nfreqs=sz[3]
-                               npols=sz[4]
-                               ntimes=sz[5]
-                             end
-                             else: begin
-                               answ=dialog_message('Unexpected data format, operation aborted!')
-                               return
-                             end
-                           endcase
-                           maps=rep_tag_value(maps, reform(maps.fitmaps,nfreqs,npols,ntimes),'fitmaps')
-                           maps=rep_tag_value(maps,reform(maps.datamaps,nfreqs,npols,ntimes),'datamaps')
-                           maps=rep_tag_value(maps,reform(maps.errmaps,nfreqs,npols,ntimes),'errmaps')
-                         endelse
+                        ; Read the axis lengths from the returned arrays. Storing
+                        ; them back into the map structure drops trailing axes
+                        ; of length 1, but [frequency, polarization, time]
+                        ; subscripts still address those axes.
+                        have_fit=tag_exist(maps,'FITMAPS')
+                        have_err=tag_exist(maps,'ERRMAPS')
+                        fit_ok=1b
+                        err_ok=1b
+                        if have_fit then fitmaps=gsfit_freqpoltime(maps.fitmaps,ok=fit_ok)
+                        datamaps=gsfit_freqpoltime(maps.datamaps,ok=data_ok)
+                        if have_err then errmaps=gsfit_freqpoltime(maps.errmaps,ok=err_ok)
+                        if ~fit_ok || ~data_ok || ~err_ok || size(datamaps,/n_dimensions) ne 3 then begin
+                          answ=dialog_message('Unexpected data format, operation aborted!')
+                          return
+                        endif
+                        mdim=size(datamaps,/dimensions)
+                        nfreqs=mdim[0]
+                        npols=mdim[1]
+                        ntimes=mdim[2]
+                        dsz=size(datamaps[0].data)
+                        nx=dsz[1]
+                        if dsz[0] ge 2 then ny=dsz[2] else ny=1
+                        ; rep_tag_value replaces the cube when the dimensions
+                        ; tag changes its structure type. A plain field
+                        ; assignment cannot.
+                        if have_fit then maps=rep_tag_value(maps,fitmaps,'fitmaps')
+                        maps=rep_tag_value(maps,datamaps,'datamaps')
+                        if have_err then maps=rep_tag_value(maps,errmaps,'errmaps')
 
                       maxfreq=nfreqs-1
                       maxtime=ntimes-1
@@ -371,6 +386,11 @@ pro gsfitview_event,event
                       names=names[where(validmaps)]
                       mapsize=lonarr(n_elements(names))
                       for i=0,n_elements(names)-1 do mapsize[i] = (size(maps.(i)))[0]
+                      ; Frequency cubes stay image maps when polarization and
+                      ; time both have length 1 and the stored array is 1-D.
+                      for i=0,n_elements(names)-1 do begin
+                        if names[i] eq 'DATAMAPS' or names[i] eq 'FITMAPS' or names[i] eq 'ERRMAPS' then mapsize[i]=3
+                      endfor
                       mapnames=names[where(mapsize gt 1)]
                       mapnames=mapnames[sort(mapnames)]
                       allparnames=names[where(mapsize eq 1)] 
@@ -728,8 +748,10 @@ pro gsfitview_display_statistics,state,save=save
         xrange=n_elements(pxrange) gt 0?anytim(time[pxrange]):minmax(anytim(time)),ymargin=[6,6]
       plot_map_colorbar,minmax(h),log=loghist,charsize=charsize,cb_title='Counts'
       if over2d then begin
-        outplot,time,lc,thick=1,psym=2
-        uterrplot,time,lc-errlc,lc+errlc,thick=1
+        colo=250
+        outplot,time,lc,thick=4,psym=2,color=0
+        outplot,time,lc,thick=1,psym=2,color=colo
+        uterrplot,time,lc-errlc,lc+errlc,thick=1,color=colo
       end
       outplot,time[[time_idx,time_idx]],logbins?10^!y.crange:!y.crange,linesty=2,color=250,thick=3
     endelse
@@ -886,7 +908,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
     if keyword_set(contour) then begin
       plot_map,parmap,title=parmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,charsize=charsize,charthick=charthick,dmin=dmin,dmax=dmax,log_scale=log_scale
       plot_map,refmap,/over,levels=level,/per,thick=6,color=0,xshift=xshift,yshift=yshift
-       plot_map,refmap,/over,levels=level,/per,thick=3,color=255,xshift=xshift,yshift=yshift
+       plot_map,refmap,/over,levels=level,/per,thick=6,color=250,xshift=xshift,yshift=yshift
       frontmap=refmap
     endif else begin
       plot_map,refmap,title=refmap.id,grid=10,/limb,/cbar,xrange=xrange, yrange=yrange,xshift=xshift,yshift=yshift,charsize=charsize,charthick=charthick
@@ -899,6 +921,7 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
   
   oplot,xpix[[i,i]],!y.crange,linesty=2,color=250,thick=3
   oplot,!x.crange,ypix[[j,j]],linesty=2,color=250,thick=3
+  if ~state.wHist.xroi.IsEmpty() then plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=0,thick=6
   if ~state.wHist.xroi.IsEmpty() then plots,state.wHist.xroi.ToArray(),state.wHist.yroi.ToArray(),color=250,thick=3
   
   if keyword_set(showrefmap) then begin
@@ -931,10 +954,10 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
         pxrange=[1,20]
       end
       plot,freq,data_spectrum[i,j,*],xlog=xlog,ylog=ylog,xrange=pxrange,yrange=pyrange,psym=2,$
-        xtitle='Frequency (GHz)',ytitle='Flux density [sfu/pixel]',title='Spectral Fit',ymargin=[6,6],/xsty,/ysty,charsize=charsize,charthick=charthick
-      oploterr, freq, data_spectrum[i,j,*], err_spectrum[i,j,*]*2/2, psym=3;, hatlength=2, errcolor=255 
+        xtitle='Frequency (GHz)',ytitle='Flux density [sfu/pixel]',title='Spectral Fit',ymargin=[6,6],/xsty,/ysty,charsize=charsize,charthick=charthick,thick=2,symsize=1
+      oploterr, freq, data_spectrum[i,j,*], err_spectrum[i,j,*]*2/2, psym=3,thick=2;, hatlength=2, errcolor=255 
       oplot,freq,fit_spectrum[i,j,*],color=BlackOnWhite?50:150,thick=3
-      oplot,freq[[freq_idx,freq_idx]],10^!y.crange,linesty=2,color=250,thick=3
+      oplot,freq[[freq_idx,freq_idx]],10^!y.crange,linesty=2,color=250,thick=5
       if range eq 'Auto' then objSpectralPlotOptions->SetProperty,xrange=keyword_set(xlog)?10^!x.crange:!x.crange, yrange=keyword_set(ylog)?10^!y.crange:!y.crange
     endif else erase,0
     
@@ -974,8 +997,9 @@ pro gsfitview_draw,state, draw=draw,_extra=_extra
       ENDIF
     
       utplot,time,lc,ytitle=parmap.id,psym=3,title=parmap.id+' Evolution',/xsty,/ysty,$
-      ymargin=[6,6],ylog=ylog,xlog=xlog,xrange=pxrange,yrange=pyrange,charsize=charsize,charthick=charthick,nticks=3
-      outplot,time,lc,color=BlackOnWhite?50:150,thick=3,psym=2
+      ymargin=[6,6],ylog=ylog,xlog=xlog,xrange=pxrange,yrange=pyrange,charsize=charsize,charthick=charthick,nticks=3,$
+        symsize=2
+      outplot,time,lc,color=BlackOnWhite?50:150,thick=3,psym=2,symsize=0.5
       if errparm_index[0] gt 0 then begin
        uterrplot,time,lc-errlc,lc+errlc
       endif
@@ -1103,6 +1127,7 @@ pro gsfitview,maps
   cd,gsfitdir,curr=cdir
     resolve_routine,'oploterr'
     resolve_routine,'gsfit_log2map',/is_function,/no_recompile
+    resolve_routine,'gsfit_freqpoltime',/is_function,/no_recompile
     resolve_routine,'gsfit_log2list',/is_function,/no_recompile
     resolve_routine,'gsfit',/no_recompile
     resolve_routine,'gsfitcp',/no_recompile

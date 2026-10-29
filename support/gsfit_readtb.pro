@@ -1,79 +1,80 @@
-pro gsfit_readtb,datafile,maps
-  if valid_map(datafile) then begin
-    dim=size(datafile,/dim)
-    maps=reform(datafile,dim)
-    goto,compute_rms
-  endif
-  ;restores brightness temperature maps and convert them to flux maps
-  osav=obj_new('idl_savefile',datafile)
-  names=osav->names()
-  valid=0
-  for i=0,n_elements(names)-1 do begin
-    osav->restore,names[i]
-    e=execute('result=size('+names[i]+',/tname)')
-    if (result eq 'STRUCT') then begin
-      e=execute('eomaps=temporary('+names[i]+')')
-    endif
-  endfor
-  obj_destroy,osav
-  if valid_map(eomaps) then begin
-    if tag_exist(eomaps,'datatype') then begin
-    if not ((eomaps[0].datatype eq 'Brightness Temperature') or (eomaps[0].datatype eq 'Flux')) then begin
+;+
+; NAME:
+;   gsfit_readtb
+; PURPOSE:
+;   Restore a brightness-temperature or flux map cube and arrange it as [frequency, polarization, time].
+; CATEGORY:
+;   GSFIT
+; CALLING SEQUENCE:
+;   gsfit_readtb, datafile, maps [, ok=ok]
+; INPUTS:
+;   DATAFILE: file name of an IDL save file, or a map structure that is already in memory.
+; OPTIONAL (KEYWORD) INPUT PARAMETERS:
+;   MAPS: named variable that receives the normalized cube. When DATAFILE is itself a map structure, the normalized cube is returned in DATAFILE.
+;   OK: 1 when a cube was arranged as [Freq, Pol, Time]. 0 when the routine returns without one. On failure MAPS is undefined.
+; OUTPUTS:
+;   MAPS: flux maps shaped [frequency, polarization, time]. Brightness-temperature input is converted to sfu. A zero RMS cube can be filled from a frequency-dependent noise ratio entered in a form. Undefined when OK is 0, and also when an in-memory cube was returned in DATAFILE.
+; ROUTINES CALLED:
+;   gsfit_freqpoltime, valid_map, CW_FORM
+; COMMENTS:
+;   None.
+; SIDE EFFECTS:
+;   May open a modal form asking for the noise-ratio intercept and slope when every RMS value is zero.
+; RESTRICTIONS:
+;   The restored structure must be a map cube whose datatype is Brightness Temperature or Flux. A missing datatype is accepted with a warning.
+; MODIFICATION HISTORY:
+;   Written 27-May-2019 Gelu M. Nita (gnita@njit.edu)
+;   10-Mar-2020 GN: Added polarization functionality.
+;   10-Sep-2020 GN: Fixed opening of map cubes with frequency, polarization, and time axes.
+;   22-Nov-2020 GN: Updated while adding EOVSA FITS import.
+;   25-Jun-2021 GN: Fixed a GX_SIMULATOR dependency.
+;   28-Aug-2021 GN: Updated the data-reading routines.
+;   10-Jun-2022 GN: Minor bug fixes.
+;   2-Nov-2022 GN: Updated run-time error handling.
+;   15-Nov-2023 GN: Fixed tag-name consistency.
+;   22-Oct-2026 GN: Replace the inline axis logic with gsfit_freqpoltime.
+;   28-Oct-2026 GN: Normalize an in-memory map before the RMS and flux steps, the same way a restored file is normalized.
+;   28-Oct-2026 GN: Apply the file-path datatype check to an in-memory cube, and return when the cube cannot be arranged as [Freq, Pol, Time].
+;   28-Oct-2026 GN: OK reports that failure, and MAPS is left undefined so the un-normalized array is not used.
+;-
+
+pro gsfit_readtb,datafile,maps,ok=ok
+  ok=0b
+  from_memory=valid_map(datafile)
+  if from_memory then begin
+    maps=datafile
+  endif else begin
+    ;restores brightness temperature maps and convert them to flux maps
+    osav=obj_new('idl_savefile',datafile)
+    names=osav->names()
+    valid=0
+    for i=0,n_elements(names)-1 do begin
+      osav->restore,names[i]
+      e=execute('result=size('+names[i]+',/tname)')
+      if (result eq 'STRUCT') then begin
+        e=execute('eomaps=temporary('+names[i]+')')
+      endif
+    endfor
+    obj_destroy,osav
+    if ~valid_map(eomaps) then return
+    maps=temporary(eomaps)
+  endelse
+  if tag_exist(maps,'datatype') then begin
+    if not ((maps[0].datatype eq 'Brightness Temperature') or (maps[0].datatype eq 'Flux')) then begin
       message,'Error: The restored maps are not brightness temperature or flux maps,operation aborted!',/info
+      scratch=temporary(maps)
       return
     endif
-    endif else message,'WARNING: The restored maps are not registered as brightness temperature maps, proceed with caution!',/info
-    maps=temporary(eomaps)
-    sz=size(maps)
-    if sz[0] eq 1 then maps=reform(maps,sz[1],1,1)
-    if sz[0] eq 2 then maps=reform(maps,sz[1],1,sz[2])
-    dim=size(maps,/dim)
-    if ~tag_exist(maps,'datatype') then begin
-      maps=REP_TAG_VALUE(maps,'Brightness Temperature','datatype')
-      maps=REP_TAG_VALUE(maps,'K','dataunits')
-    endif
-    if tag_exist(maps,'dimensions') then begin
-      dimensions=maps[0].dimensions
-      if n_elements(dimensions) ne n_elements(dim) then begin
-        message,'Error: Map array dimensions do not match the dimensions tag, operation aborted!',/info
-        return
-      endif
-       case n_elements(dim) of
-        1: begin 
-             case dimensions[0] of
-              'Freq': maps=reform(maps,dim[0],1,1)
-              'Pol': maps=reform(maps,1,dim[0],1)
-               else: maps=reform(maps,1,1,dim[0])
-             endcase
-           end  
-        2: begin
-            case 1 of
-              array_equal(dimensions,['Freq','Pol']): maps=reform(maps,dim[0],dim[1],1)
-              array_equal(dimensions,['Freq','Time']): maps=reform(maps,dim[0],1,dim[1])
-              else: maps=reform(1,maps,dim[0],dim[1])
-            endcase  
-           end
-        else: begin 
-        end   
-       endcase
-      dimensions=['Freq','Pol','Time']
-      dim=size(maps,/dim)
-      maps=rem_tag(maps,'dimensions')
-      maps=add_tag(maps,'dimensions',dimensions)
-      maps=reform(maps,dim[0],dim[1],dim[2])
-    endif else begin
-      ;Here we make some assumptions based on preestablished conventions
-      dimensions=['Freq','Pol','Time']
-      case n_elements(dim) of
-        1: maps=reform(maps,dim[0],1,1)
-        2: maps=reform(maps,dim[0],1,dim[1]);backward compatibility with no polariziation freq-time maps
-        else: maps=reform(maps[0:dim[0]*dim[1]*dim[2]-1],dim[0],dim[1],dim[2]); Remove unexpected dimmensions, if any!!!
-      endcase
-      dim=size(maps,/dim)
-      maps=REP_TAG_VALUE(maps,dimensions,'dimensions')
-      maps=reform(maps,dim[0],dim[1],dim[2])
-    endelse
-    compute_rms:
+  endif else begin
+    message,'WARNING: The restored maps are not registered as brightness temperature maps, proceed with caution!',/info
+    maps=REP_TAG_VALUE(maps,'Brightness Temperature','datatype')
+    maps=REP_TAG_VALUE(maps,'K','dataunits')
+  endelse
+  maps=gsfit_freqpoltime(maps,ok=arranged)
+  if ~arranged then begin
+    scratch=temporary(maps)
+    return
+  endif
     ;temporary
     if max(maps.rms) eq 0 then begin
       desc = [ $
@@ -123,7 +124,7 @@ pro gsfit_readtb,datafile,maps
           maps[*,i,j].rms*=1/coeff
         endfor
       endfor  
-    endif  
-  endif  
-  if valid_map(datafile) then datafile=temporary(maps)
+    endif
+  ok=1b
+  if from_memory then datafile=temporary(maps)
 end  
